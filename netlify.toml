@@ -1,0 +1,33 @@
+# Netlify — deploy the Closwiz marketing landing (static, no build step).
+# It serves the closwiz-landing/ folder from this monorepo, so when you
+# import this repo into Netlify it auto-configures — no "base directory"
+# fiddling needed.
+[build]
+  publish = "closwiz-landing"
+  command = ""
+
+# The landing's CTA buttons link to /signup and /login. The local serve.py
+# 302s those to the dev dashboard on :2886 — but Netlify is static, so we
+# redirect them to the LIVE dashboard here instead (otherwise they 404).
+#
+# 👉 Replace YOUR-DASHBOARD-URL with your real dashboard URL once it's live
+#    (your Railway dashboard domain, or app.closwiz.com on a custom domain).
+[[redirects]]
+  from = "/signup"
+  to = "https://YOUR-DASHBOARD-URL/signup"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/login"
+  to = "https://YOUR-DASHBOARD-URL/login"
+  status = 302
+  force = true
+
+# Nice-to-have headers for a marketing page.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
