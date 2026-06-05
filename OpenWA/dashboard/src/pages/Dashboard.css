@@ -1,0 +1,803 @@
+.dashboard {
+  padding: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.status-badge.connected {
+  background: rgba(37, 211, 102, 0.12);
+  color: var(--primary);
+}
+
+.status-badge.disconnected {
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
+
+/* ── Shared panel surface ─────────────────────────────────────────────── */
+.panel {
+  background: var(--bg-white);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.section-subtitle {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* ── Plan / trial status banner ───────────────────────────────────────────
+   Sits between the page header and the KPI grid. Reuses the .panel surface
+   but adds a metric strip + progress bar. Trial accounts get the purple
+   treatment shared with Billing + the top-bar pill; near-end escalates to
+   amber and an ended trial to red. */
+.plan-status {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.35rem 1.5rem;
+}
+
+.plan-status-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.plan-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(0, 200, 150, 0.12);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.plan-status-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.plan-status-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.plan-status-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.plan-status-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.plan-status-tag {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(0, 200, 150, 0.14);
+  color: var(--primary);
+}
+
+.plan-status-sub {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.plan-status-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.plan-status-cta:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.plan-status-metrics {
+  display: flex;
+  gap: 2.5rem;
+}
+
+.plan-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.plan-metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.plan-metric-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.plan-status-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.plan-status-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--bg-light);
+  overflow: hidden;
+}
+
+.plan-status-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--primary);
+  transition: width 0.4s ease;
+}
+
+.plan-status-bar-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Trial accent — matches Billing + top-bar purple. */
+.plan-status.is-trial {
+  background: linear-gradient(135deg, rgba(0, 200, 150, 0.08), rgba(168, 85, 247, 0.03));
+  border-color: rgba(0, 200, 150, 0.25);
+}
+.plan-status.is-trial .plan-status-icon { background: rgba(0, 200, 150, 0.14); color: #00c896; }
+.plan-status.is-trial .plan-status-tag { background: rgba(0, 200, 150, 0.16); color: #00c896; }
+.plan-status.is-trial .plan-status-fill { background: linear-gradient(90deg, #00c896, #00e0a8); }
+.plan-status.is-trial .plan-status-cta { background: #00c896; }
+
+/* Near-end (amber) — trial about to lapse. */
+.plan-status.is-warn { border-color: rgba(245, 158, 11, 0.4); }
+.plan-status.is-warn .plan-status-fill { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.plan-status.is-warn .plan-status-tag { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+
+/* Ended (red) — trial fully consumed. */
+.plan-status.is-ended {
+  border-color: rgba(220, 38, 38, 0.45);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.06), rgba(220, 38, 38, 0.02));
+}
+.plan-status.is-ended .plan-status-icon { background: rgba(220, 38, 38, 0.12); color: #dc2626; }
+.plan-status.is-ended .plan-status-tag { background: rgba(220, 38, 38, 0.14); color: #dc2626; }
+.plan-status.is-ended .plan-status-fill { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.plan-status.is-ended .plan-status-cta { background: #dc2626; }
+
+@media (max-width: 640px) {
+  .plan-status-head { flex-wrap: wrap; }
+  .plan-status-cta { width: 100%; justify-content: center; }
+  .plan-status-metrics { gap: 1.5rem; }
+}
+
+/* ── KPI cards ─────────────────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.kpi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-white);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 1rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  min-width: 0;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.kpi-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.kpi-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.kpi-value {
+  font-size: 1.875rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.kpi-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  flex-shrink: 0;
+}
+
+.kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 0.625rem;
+}
+
+.kpi-trend.up {
+  color: #10b981;
+}
+
+.kpi-trend.down {
+  color: #ef4444;
+}
+
+.kpi-trend-caption {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.kpi-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.625rem;
+}
+
+.kpi-foot {
+  margin-top: 0.875rem;
+  min-height: 30px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.spark {
+  width: 100%;
+  height: 30px;
+  display: block;
+}
+
+.spark-empty {
+  width: 100%;
+  height: 30px;
+}
+
+/* ── Progress bar (resolution / response rate) ────────────────────────── */
+.progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--bg-light);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+/* ── Two-column rows (chart+donut, activity+botperf) ──────────────────── */
+.dash-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+/* ── Area chart ───────────────────────────────────────────────────────── */
+.chart-legend {
+  display: flex;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.legend-item .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.legend-item .dot.dashed {
+  border-radius: 2px;
+  height: 3px;
+  width: 14px;
+}
+
+.area-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.area-chart .grid-line {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.area-chart .x-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+/* ── Donut ────────────────────────────────────────────────────────────── */
+.donut-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.donut {
+  width: 168px;
+  height: 168px;
+}
+
+.donut-bg {
+  stroke: var(--bg-light);
+}
+
+.donut-total {
+  fill: var(--text-primary);
+  font-size: 28px;
+  font-weight: 800;
+  font-family: inherit;
+}
+
+.donut-cap {
+  fill: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: inherit;
+}
+
+.donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-val {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.legend-pct {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Bot performance panel ────────────────────────────────────────────── */
+.perf-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.perf-row:last-of-type {
+  border-bottom: none;
+}
+
+.perf-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+
+.perf-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.perf-val {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.perf-block {
+  padding-top: 1rem;
+}
+
+.perf-block-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Recent-activity feed ─────────────────────────────────────────────── */
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(0, 200, 150, 0.1);
+  color: #00c896;
+}
+
+.activity-text {
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-time {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.activity-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  padding: 2rem 0;
+}
+
+/* ── Status pills (orders + sessions) ─────────────────────────────────── */
+.status-pill {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.status-pill.ready {
+  background: rgba(37, 211, 102, 0.1);
+  color: var(--primary);
+}
+
+.status-pill.connecting {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-pill.disconnected {
+  background: #f3f4f6;
+  color: var(--text-muted);
+}
+
+.activity-item .status-pill.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.activity-item .status-pill.confirmed,
+.activity-item .status-pill.delivered {
+  background: rgba(37, 211, 102, 0.12);
+  color: var(--primary);
+}
+
+.activity-item .status-pill.dispatched {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.activity-item .status-pill.cancelled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ── Sessions table ───────────────────────────────────────────────────── */
+.sessions-table {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.sessions-table .table-header,
+.sessions-table .table-row {
+  display: grid;
+  grid-template-columns: 140px 200px 140px 1fr 180px;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  align-items: center;
+}
+
+.sessions-table .table-header {
+  background: var(--bg-light);
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+.sessions-table .table-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.sessions-table .table-row:last-child {
+  border-bottom: none;
+}
+
+.session-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.session-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.session-name {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.phone {
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.last-active {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.btn-sm:hover {
+  background: var(--bg-white);
+  border-color: var(--text-muted);
+}
+
+.btn-sm.danger {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.btn-sm.danger:hover {
+  background: #fee2e2;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1000px) {
+  .dash-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 1rem;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr 1fr 1fr;
+    font-size: 0.8125rem;
+  }
+
+  .table-header span:nth-child(4),
+  .table-header span:nth-child(5),
+  .table-row > *:nth-child(4),
+  .table-row > *:nth-child(5) {
+    display: none;
+  }
+
+  .activity-item {
+    grid-template-columns: 24px 1fr auto;
+  }
+
+  .activity-item .status-pill {
+    display: none;
+  }
+}

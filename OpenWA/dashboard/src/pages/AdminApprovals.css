@@ -1,0 +1,276 @@
+/* ═════════════════════════════════════════════════════════════════════
+   AdminApprovals — platform admin dashboard
+   Lives outside the seller dashboard's Layout; this is the only screen
+   admin users see. Uses the same blue/cyan palette as Login.css.
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* AdminApprovals lives inside the standard Layout container, so we just
+   give it a max-width and let the Layout's main-content scroll for us.
+   No fixed positioning, no custom top bar — the sidebar handles that. */
+.admin-page {
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  color: #1e2438;
+}
+
+.admin-main {
+  padding: 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.admin-header { margin-bottom: 1.75rem; }
+.admin-header h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #0f1729;
+}
+.admin-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9375rem;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────── */
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: white;
+  border: 1px solid #e6e8f0;
+  color: #6b7280;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.filter-chip:hover { border-color: #3b5cf6; color: #3b5cf6; }
+.filter-chip.is-active {
+  background: linear-gradient(135deg, #3b5cf6, #22d3ee);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px -4px rgba(59, 92, 246, 0.45);
+}
+.chip-count {
+  margin-left: 0.35rem;
+  background: rgba(255, 255, 255, 0.28);
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+}
+
+.admin-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: white;
+  border: 1px solid #e6e8f0;
+  color: #6b7280;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.admin-refresh:hover:not(:disabled) { border-color: #3b5cf6; color: #3b5cf6; }
+.admin-refresh:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Error / empty state ───────────────────────────────────────────── */
+.admin-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.admin-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+.admin-empty p {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e2438;
+}
+.admin-empty span { font-size: 0.875rem; }
+
+/* ── Seller list ───────────────────────────────────────────────────── */
+.seller-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.seller-card {
+  background: white;
+  border: 1px solid #e6e8f0;
+  border-radius: 14px;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.seller-card:hover {
+  border-color: rgba(59, 92, 246, 0.25);
+  box-shadow: 0 4px 16px -8px rgba(15, 23, 41, 0.08);
+}
+
+.seller-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.seller-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b5cf6, #22d3ee);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+.seller-info { min-width: 0; flex: 1; }
+
+.seller-row1 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+.seller-row1 h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #0f1729;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.status-pill.tone-warn { background: #fef3c7; color: #92400e; }
+.status-pill.tone-ok   { background: #d1fae5; color: #065f46; }
+.status-pill.tone-bad  { background: #fee2e2; color: #991b1b; }
+
+.seller-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: #6b7280;
+  font-size: 0.8125rem;
+}
+.seller-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.seller-date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.35rem;
+}
+
+/* ── Action buttons ────────────────────────────────────────────────── */
+.seller-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 9px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.action-btn.approve {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+  box-shadow: 0 3px 10px -3px rgba(16, 185, 129, 0.5);
+}
+.action-btn.approve:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px -4px rgba(16, 185, 129, 0.6);
+}
+
+.action-btn.reject {
+  background: white;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.action-btn.reject:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.spin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile ────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .admin-topbar { padding: 0.85rem 1rem; }
+  .admin-main { padding: 1.5rem 1rem; }
+  .admin-header h2 { font-size: 1.5rem; }
+  .seller-card { flex-direction: column; align-items: stretch; }
+  .seller-actions { width: 100%; }
+  .seller-actions .action-btn { flex: 1; justify-content: center; }
+}

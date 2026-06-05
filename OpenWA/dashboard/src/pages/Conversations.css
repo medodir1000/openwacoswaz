@@ -1,0 +1,448 @@
+/* Conversations inbox — 3-pane grid: list · thread · customer panel.
+   Uses the dashboard design tokens (App.css) so it tracks light/dark. */
+
+.conv-page {
+  display: grid;
+  grid-template-columns: 320px 1fr 300px;
+  height: calc(100vh - 0px);
+  min-height: 0;
+  background: var(--bg-light);
+  overflow: hidden;
+}
+.conv-page .spin { animation: conv-spin 0.9s linear infinite; }
+@keyframes conv-spin { to { transform: rotate(360deg); } }
+
+/* ── Left: list ─────────────────────────────────────────────────────────── */
+.conv-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-inline-end: 1px solid var(--border);
+  background: var(--bg-white);
+}
+.conv-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 10px;
+}
+.conv-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.conv-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.conv-icon-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+.conv-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
+.conv-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.conv-filters {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.conv-filter {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+.conv-filter.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.conv-rows {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.conv-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  text-align: start;
+}
+.conv-row:hover { background: var(--bg-light); }
+.conv-row.is-active { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+
+.conv-avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.conv-avatar.sm { width: 34px; height: 34px; font-size: 0.75rem; }
+.conv-avatar.lg { width: 64px; height: 64px; font-size: 1.3rem; }
+
+.conv-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.conv-row-top, .conv-row-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.conv-row-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conv-row-time { flex-shrink: 0; font-size: 0.7rem; color: var(--text-muted); }
+.conv-row-preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conv-tag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+.conv-tag.ai { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.conv-tag.human { background: color-mix(in srgb, var(--warning) 22%, transparent); color: var(--warning); }
+
+.conv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.conv-empty p { margin: 0; font-weight: 600; color: var(--text-secondary); }
+.conv-empty span { font-size: 0.8rem; }
+
+/* ── Center: thread ─────────────────────────────────────────────────────── */
+.conv-thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--bg-light);
+}
+.conv-thread-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
+.conv-thread-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-white);
+}
+.conv-thread-id { display: flex; flex-direction: column; min-width: 0; }
+.conv-thread-id strong { font-size: 0.92rem; color: var(--text-primary); }
+.conv-thread-id span { font-size: 0.76rem; color: var(--text-muted); }
+.conv-thread-actions { margin-inline-start: auto; display: flex; align-items: center; gap: 10px; }
+
+.conv-agent-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.conv-agent-state.on { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
+.conv-agent-state.off { background: color-mix(in srgb, var(--text-muted) 22%, transparent); color: var(--text-secondary); }
+
+.conv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.conv-btn.ghost { background: var(--bg-card); color: var(--text-secondary); }
+.conv-btn.ghost:hover { border-color: var(--warning); color: var(--warning); }
+.conv-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.conv-btn:disabled { opacity: 0.6; cursor: default; }
+
+.conv-messages {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.conv-day-block { display: flex; flex-direction: column; gap: 4px; }
+.conv-day-sep { display: flex; justify-content: center; margin: 10px 0; }
+.conv-day-sep span {
+  padding: 3px 12px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.conv-bubble-row { display: flex; }
+.conv-bubble-row.theirs { justify-content: flex-start; }
+.conv-bubble-row.mine { justify-content: flex-end; }
+.conv-bubble {
+  max-width: 72%;
+  padding: 8px 11px 5px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: var(--shadow-sm);
+}
+.conv-bubble-row.theirs .conv-bubble {
+  background: var(--bg-white);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
+}
+.conv-bubble-row.mine .conv-bubble {
+  background: color-mix(in srgb, var(--primary) 90%, #000 0%);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.conv-bubble p { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.conv-bubble-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.64rem;
+  opacity: 0.75;
+}
+.conv-receipt { opacity: 0.9; }
+
+.conv-send-error, .conv-takeover-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 16px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+.conv-send-error { background: color-mix(in srgb, var(--error) 14%, transparent); color: var(--error); }
+.conv-takeover-note { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+
+.conv-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-white);
+}
+.conv-composer textarea {
+  flex: 1;
+  resize: none;
+  max-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-light);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  line-height: 1.4;
+  outline: none;
+}
+.conv-composer textarea:focus { border-color: var(--primary); }
+.conv-send-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+}
+.conv-send-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Right: customer panel ──────────────────────────────────────────────── */
+.conv-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 16px;
+  border-inline-start: 1px solid var(--border);
+  background: var(--bg-white);
+}
+.conv-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.conv-card-name { font-size: 1rem; color: var(--text-primary); }
+.conv-card-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.conv-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 4px; }
+.conv-readiness {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-secondary);
+}
+.conv-readiness.lvl-2 { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
+.conv-readiness.lvl-3 { background: color-mix(in srgb, var(--primary) 20%, transparent); color: var(--primary); }
+.conv-readiness.lvl-4 { background: color-mix(in srgb, var(--success) 22%, transparent); color: var(--success); }
+.conv-stage {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.conv-section { display: flex; flex-direction: column; gap: 8px; }
+.conv-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.conv-section-hint {
+  margin: -2px 0 2px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.conv-suggestion {
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-light);
+}
+.conv-suggestion-label { font-size: 0.7rem; font-weight: 700; color: var(--primary); text-transform: uppercase; }
+.conv-suggestion p { margin: 6px 0 10px; font-size: 0.83rem; color: var(--text-primary); line-height: 1.4; }
+.conv-add-suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--primary);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.conv-add-suggestion:hover { background: var(--primary); color: #fff; }
+
+.conv-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.conv-timeline li { display: flex; gap: 10px; }
+.conv-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+.conv-dot.muted { background: var(--text-muted); }
+.conv-timeline li div { display: flex; flex-direction: column; }
+.conv-timeline strong { font-size: 0.8rem; color: var(--text-primary); }
+.conv-timeline span { font-size: 0.72rem; color: var(--text-muted); }
+
+/* ── Responsive: drop the right panel, then collapse to single pane ─────── */
+@media (max-width: 1100px) {
+  .conv-page { grid-template-columns: 300px 1fr; }
+  .conv-panel { display: none; }
+}
+@media (max-width: 720px) {
+  .conv-page { grid-template-columns: 1fr; }
+  .conv-list { border-inline-end: none; }
+}

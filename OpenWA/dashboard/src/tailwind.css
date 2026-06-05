@@ -1,0 +1,69 @@
+/* ============================================================================
+   Tailwind v4 — UTILITIES ONLY (no global preflight).
+
+   This dashboard already ships its own resets (App.css / index.css) and a lot
+   of hand-written CSS (.billing-*, .funnel-*, .auth-*) that assumes the
+   browser's default element styling. Tailwind's normal `@import "tailwindcss"`
+   pulls in **preflight**, which globally resets every <h1>, <ul>, <button>,
+   <img>… and would silently break those existing pages.
+
+   So instead we import only the THEME (color/spacing CSS variables) and the
+   UTILITIES, and skip preflight. To still get a correct result for
+   Tailwind-built components, we add a SCOPED mini-reset that applies ONLY
+   inside a `.tw` container ("Tailwind island").
+
+   👉 Wrap any Tailwind component's root element in className="tw ..." .
+   ========================================================================== */
+
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/* ----------------------------------------------------------------------------
+   Scoped preflight-lite — mirrors the parts of Tailwind's real preflight that
+   the utilities depend on, but only within `.tw`. Lives in @layer base so that
+   utility classes (a later layer) always win over it.
+   -------------------------------------------------------------------------- */
+@layer base {
+  .tw *,
+  .tw *::before,
+  .tw *::after {
+    box-sizing: border-box;
+    border: 0 solid #e5e7eb; /* makes `border` utilities show + kills UA button/fieldset borders */
+  }
+
+  .tw h1, .tw h2, .tw h3, .tw h4, .tw h5, .tw h6 {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  .tw p, .tw figure, .tw blockquote, .tw dl, .tw dd { margin: 0; }
+  .tw ul, .tw ol { margin: 0; padding: 0; list-style: none; }
+
+  .tw button,
+  .tw [type='button'],
+  .tw [type='submit'],
+  .tw [type='reset'] {
+    appearance: button;
+    background-color: transparent;
+    background-image: none;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+  }
+  .tw button:disabled { cursor: default; }
+
+  .tw input,
+  .tw textarea,
+  .tw select {
+    font: inherit;
+    color: inherit;
+  }
+  .tw input::placeholder,
+  .tw textarea::placeholder { color: inherit; opacity: 1; }
+  .tw input[type='checkbox'] { accent-color: #10b981; } /* emerald checkboxes (no forms plugin needed) */
+
+  .tw img, .tw svg, .tw video, .tw canvas { display: block; }
+  .tw svg { vertical-align: middle; }
+}

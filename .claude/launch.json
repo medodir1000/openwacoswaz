@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "konvico-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/lenovo/Desktop/leadecombot/OpenWA/dashboard", "run", "dev"],
+      "port": 2886
+    },
+    {
+      "name": "konvico-landing",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-c", "import os,http.server,socketserver;os.chdir('C:/Users/lenovo/Desktop/leadecombot/landing');socketserver.TCPServer(('127.0.0.1',4178),http.server.SimpleHTTPRequestHandler).serve_forever()"],
+      "port": 4178
+    }
+  ]
+}

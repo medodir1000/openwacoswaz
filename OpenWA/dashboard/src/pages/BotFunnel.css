@@ -1,0 +1,612 @@
+/* Bot Funnel page — leadecombot management surface */
+
+.funnel-page { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+
+.funnel-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.funnel-eyebrow { font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--color-text-secondary, #888); margin: 0 0 0.25rem; font-weight: 700; }
+.funnel-title { font-size: 2.25rem; font-weight: 900; margin: 0; letter-spacing: -0.04em; }
+.funnel-subtitle { color: var(--color-text-secondary, #888); margin: 0.25rem 0 0; font-size: 0.875rem; }
+
+.funnel-tabs { display: flex; gap: 0.5rem; border-bottom: 1px solid var(--color-border, #e5e7eb); margin-bottom: 1.5rem; flex-wrap: wrap; }
+.funnel-tab {
+  background: transparent; border: none; padding: 0.75rem 1rem;
+  font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  color: var(--color-text-secondary, #6b7280);
+  border-bottom: 2px solid transparent; transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.funnel-tab:hover { color: var(--color-text-primary, #111); }
+.funnel-tab.is-active { color: var(--color-accent, #3b82f6); border-bottom-color: var(--color-accent, #3b82f6); }
+.funnel-icon { width: 1rem; height: 1rem; }
+
+.funnel-body { min-height: 50vh; }
+
+.funnel-row-between { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.funnel-actions { display: flex; gap: 0.5rem; }
+.funnel-help { color: var(--color-text-secondary, #6b7280); font-size: 0.8125rem; max-width: 60ch; line-height: 1.5; }
+
+/* Buttons */
+.funnel-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; border-radius: 0.625rem;
+  font-size: 0.8125rem; font-weight: 700; cursor: pointer;
+  border: 1px solid transparent; transition: all 0.12s;
+}
+.funnel-btn svg { width: 1rem; height: 1rem; }
+.funnel-btn.primary { background: var(--color-accent, #3b82f6); color: white; }
+.funnel-btn.primary:hover:not(:disabled) { filter: brightness(1.1); }
+/* Secondary tier (used for "New service") — same prominence as primary
+   but a distinct teal hue so the operator visually separates the two
+   creation flows (physical product vs booking). */
+.funnel-btn.secondary { background: #14b8a6; color: white; }
+.funnel-btn.secondary:hover:not(:disabled) { filter: brightness(1.1); }
+.funnel-btn.ghost { background: white; color: var(--color-text-primary, #111); border-color: var(--color-border, #d1d5db); }
+.funnel-btn.ghost:hover:not(:disabled) { border-color: var(--color-accent, #3b82f6); color: var(--color-accent, #3b82f6); }
+.funnel-btn.icon { padding: 0.375rem; }
+.funnel-btn.icon.danger { color: #dc2626; }
+.funnel-btn.small { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+.funnel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Inputs */
+.funnel-input {
+  width: 100%; padding: 0.7rem 0.85rem; border-radius: 12px;
+  border: 1.5px solid #e6e8f0; background: #fbfbfe;
+  font-size: 0.9375rem; color: inherit;
+  transition: border-color 0.15s, box-shadow 0.18s, background 0.15s;
+}
+.funnel-input:hover { border-color: #cbd1de; }
+.funnel-input:focus { outline: none; border-color: #00C896; background: #fff; box-shadow: 0 0 0 4px rgba(0, 200, 150, 0.14); }
+.funnel-input::placeholder { color: #aab0be; }
+.funnel-input.mono { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.8125rem; }
+
+.funnel-field { display: block; margin-bottom: 1rem; }
+.funnel-field-label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--color-text-secondary, #6b7280); margin-bottom: 0.375rem; }
+.funnel-field-req { color: #ef4444; font-weight: 800; }
+.funnel-field-hint { display: block; font-size: 0.6875rem; color: var(--color-text-secondary, #9ca3af); margin-top: 0.375rem; line-height: 1.4; }
+
+.funnel-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+@media (max-width: 640px) { .funnel-grid-2 { grid-template-columns: 1fr; } }
+
+.funnel-section-title { font-size: 0.875rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: var(--color-text-primary, #111); }
+
+/* Cards (product grid) */
+.funnel-products-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.funnel-card {
+  border: 1px solid var(--color-border, #e5e7eb); border-radius: 1rem;
+  padding: 1rem; background: white; position: relative;
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.funnel-card-img {
+  width: 100%; height: 140px; background: #f3f4f6;
+  border-radius: 0.625rem; display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.funnel-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.funnel-card-img svg { width: 2rem; height: 2rem; color: #9ca3af; }
+.funnel-card-body h3 { margin: 0 0 0.25rem; font-size: 1rem; font-weight: 800; }
+.funnel-card-desc { margin: 0; font-size: 0.8125rem; color: var(--color-text-secondary, #6b7280); line-height: 1.4; min-height: 2.6em; }
+.funnel-card-meta { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.funnel-card-actions { display: flex; gap: 0.25rem; justify-content: flex-end; }
+
+/* Pills */
+.pill {
+  font-size: 0.6875rem; padding: 0.125rem 0.5rem; border-radius: 999px;
+  background: #f3f4f6; color: #4b5563; font-weight: 600;
+}
+.pill.active { background: #dcfce7; color: #15803d; }
+.pill.archived { background: #fee2e2; color: #b91c1c; }
+.pill.out_of_stock { background: #fef3c7; color: #b45309; }
+.pill.ok { background: #dcfce7; color: #15803d; }
+.pill.danger { background: #fee2e2; color: #b91c1c; }
+.pill.pending { background: #fef3c7; color: #b45309; }
+.pill.order_placed { background: #dbeafe; color: #1e40af; }
+
+/* Empty state */
+.funnel-empty {
+  text-align: center; padding: 3rem 1rem; color: var(--color-text-secondary, #6b7280);
+  border: 1px dashed var(--color-border, #d1d5db); border-radius: 1rem;
+}
+.funnel-empty svg { width: 2.5rem; height: 2.5rem; opacity: 0.4; margin-bottom: 0.5rem; }
+
+/* Drawer */
+.funnel-drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; justify-content: flex-end; z-index: 100;
+}
+.funnel-drawer {
+  width: min(580px, 100vw); height: 100vh; background: white;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: -8px 0 32px rgba(0,0,0,0.2);
+}
+.funnel-drawer-head { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--color-border, #e5e7eb); }
+.funnel-drawer-head h2 { margin: 0; font-size: 1.125rem; font-weight: 800; }
+.funnel-drawer-body { padding: 1.5rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+.funnel-drawer-foot { display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem 1.5rem; border-top: 1px solid var(--color-border, #e5e7eb); margin-top: auto; position: sticky; bottom: 0; background: white; box-shadow: 0 -8px 16px rgba(16, 24, 40, 0.04); }
+
+/* Tables */
+.funnel-table-wrap { overflow-x: auto; border: 1px solid var(--color-border, #e5e7eb); border-radius: 1rem; }
+.funnel-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+.funnel-table th { text-align: left; padding: 0.75rem; background: #f9fafb; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; color: #6b7280; border-bottom: 1px solid var(--color-border, #e5e7eb); }
+.funnel-table td { padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--color-border, #f3f4f6); }
+.funnel-table tr:hover { background: #f9fafb; }
+.funnel-table .muted { color: var(--color-text-secondary, #6b7280); }
+.funnel-table .bold { font-weight: 700; }
+.funnel-table .mono { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.75rem; }
+.funnel-table .center { text-align: center; }
+.funnel-table .right { text-align: right; }
+.funnel-table .small { font-size: 0.7rem; }
+.funnel-table a { color: var(--color-accent, #3b82f6); text-decoration: none; }
+.funnel-table a:hover { text-decoration: underline; }
+
+/* Stats row (orders) */
+.funnel-stats { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.funnel-stat { background: #f9fafb; padding: 0.625rem 1rem; border-radius: 0.625rem; min-width: 80px; }
+.funnel-stat-label { font-size: 0.625rem; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7280; margin: 0; font-weight: 700; }
+.funnel-stat-value { font-size: 1.25rem; font-weight: 900; margin: 0.125rem 0 0; }
+
+/* Settings */
+.funnel-settings { max-width: 720px; }
+.funnel-section { background: white; border: 1px solid var(--color-border, #e5e7eb); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1rem; }
+.funnel-section h2 { font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 700; color: var(--color-text-secondary, #6b7280); margin: 0 0 1rem; }
+
+.funnel-muted { color: var(--color-text-secondary, #6b7280); }
+.funnel-error { display: flex; align-items: center; gap: 0.4rem; color: #b91c1c; background: #fee2e2; padding: 0.625rem 1rem; border-radius: 0.625rem; font-size: 0.8125rem; margin: 0.75rem 0; }
+.funnel-error svg { flex: none; }
+
+/* ── Redesigned create/edit drawer — section cards + premium polish ────── */
+.funnel-drawer-head-titles { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.funnel-kind-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+.funnel-kind-badge.is-product { background: #eef2ff; color: #4338ca; }
+.funnel-kind-badge.is-service { background: #ecfdf5; color: #047857; }
+
+/* Scope the card look to the drawer so SettingsTab's .funnel-section is untouched. */
+.funnel-drawer-body .funnel-section { background: #fff; border: 1px solid #e6e8f0; border-radius: 14px; padding: 1.1rem 1.15rem; margin-bottom: 1rem; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }
+.funnel-section-head { display: flex; align-items: flex-start; gap: 0.7rem; margin-bottom: 0.9rem; }
+.funnel-section-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: none; border-radius: 12px; background: rgba(0, 200, 150, 0.08); color: #00C896; }
+.funnel-section-icon svg { width: 18px; height: 18px; }
+.funnel-section-headings { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.funnel-drawer-body .funnel-section h2 { margin: 0; font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: #6b7280; }
+.funnel-section-sub { margin: 0; font-size: 0.75rem; line-height: 1.45; color: #9097a3; }
+
+.funnel-field-opt { font-weight: 600; color: #9ca3af; text-transform: none; letter-spacing: 0; }
+.funnel-foot-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.funnel-drawer-foot .funnel-error { margin: 0; }
+
+/* Dark mode for the redesigned drawer */
+[data-theme='dark'] .funnel-input:hover { border-color: #4b5563; }
+[data-theme='dark'] .funnel-input:focus { border-color: #00e0a8; background: #0f1626; box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.16); }
+[data-theme='dark'] .funnel-input::placeholder { color: #6b7280; }
+[data-theme='dark'] .funnel-section-icon { background: rgba(168, 85, 247, 0.16); color: #c4b5fd; }
+[data-theme='dark'] .funnel-section-sub { color: #9ca3af; }
+[data-theme='dark'] .funnel-kind-badge.is-product { background: rgba(99, 102, 241, 0.18); color: #c7d2fe; }
+[data-theme='dark'] .funnel-kind-badge.is-service { background: rgba(16, 185, 129, 0.16); color: #6ee7b7; }
+.funnel-success { color: #15803d; font-size: 0.8125rem; font-weight: 700; }
+
+/* ── Image uploader ────────────────────────────────────────────────── */
+.funnel-uploader { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.funnel-drop {
+  position: relative;
+  width: 100%;
+  min-height: 180px;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  background: #fafbff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s, background 0.15s;
+}
+.funnel-drop:hover { border-color: #3b5cf6; background: rgba(59, 92, 246, 0.04); }
+.funnel-drop.is-drag {
+  border-color: #3b5cf6;
+  background: rgba(59, 92, 246, 0.08);
+  box-shadow: inset 0 0 0 3px rgba(59, 92, 246, 0.2);
+}
+.funnel-drop.has-image { padding: 0; border-style: solid; border-color: #e6e8f0; background: #fff; }
+
+.funnel-drop img {
+  max-width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  display: block;
+}
+
+.funnel-drop-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 0.55rem 0.85rem;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.65));
+  color: white;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.funnel-drop:hover .funnel-drop-overlay { opacity: 1; }
+
+.funnel-drop-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  color: #6b7280;
+  padding: 1rem;
+  text-align: center;
+}
+.funnel-drop-empty strong { color: #1e2438; font-size: 0.9375rem; font-weight: 600; }
+.funnel-drop-empty span { font-size: 0.75rem; }
+
+.funnel-drop-busy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  color: #3b5cf6;
+  width: 80%;
+  max-width: 360px;
+}
+.funnel-drop-busy span { font-size: 0.875rem; font-weight: 600; }
+.funnel-drop-bar {
+  width: 100%;
+  height: 6px;
+  background: #e6e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.funnel-drop-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, #3b5cf6, #22d3ee);
+  transition: width 0.15s ease;
+}
+
+.funnel-uploader-err {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #b91c1c;
+  font-size: 0.8125rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+}
+.funnel-uploader-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.funnel-input.mono.small {
+  flex: 1;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.7rem;
+}
+
+/* Dark mode tweaks */
+[data-theme='dark'] .funnel-input,
+[data-theme='dark'] .funnel-card,
+[data-theme='dark'] .funnel-section,
+[data-theme='dark'] .funnel-table-wrap,
+[data-theme='dark'] .funnel-drawer { background: #1f2937; color: #f9fafb; border-color: #374151; }
+[data-theme='dark'] .funnel-drawer-foot { background: #1f2937; }
+[data-theme='dark'] .funnel-stat,
+[data-theme='dark'] .funnel-card-img,
+[data-theme='dark'] .funnel-table th { background: #111827; }
+[data-theme='dark'] .funnel-btn.ghost { background: #1f2937; }
+[data-theme='dark'] .pill { background: #374151; color: #d1d5db; }
+[data-theme='dark'] .funnel-drop { background: #111827; border-color: #374151; }
+[data-theme='dark'] .funnel-drop.has-image { background: #111827; border-color: #1f2937; }
+[data-theme='dark'] .funnel-drop-empty strong { color: #f3f4f6; }
+[data-theme='dark'] .funnel-uploader-err { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; }
+
+/* ── Sheets URL helper / warning ───────────────────────────────────── */
+.funnel-sheets-help { margin-top: 0.4rem; }
+.funnel-sheets-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  font-size: 0.8125rem;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 7px;
+}
+.funnel-sheets-warn {
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  color: #92400e;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.funnel-sheets-warn p { margin: 0.35rem 0 0.5rem; color: #78350f; }
+.funnel-sheets-warn-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.funnel-sheets-warn-head strong { font-weight: 600; }
+
+.funnel-linklike {
+  background: none;
+  border: none;
+  color: #3b5cf6;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+.funnel-linklike:hover { text-decoration: underline; }
+
+.funnel-sheets-steps { margin-top: 0.6rem; }
+.funnel-sheets-steps ol {
+  margin: 0 0 0.85rem;
+  padding-left: 1.4rem;
+  color: #1e2438;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+.funnel-sheets-steps code {
+  background: #f3f4f6;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+.funnel-sheets-code {
+  position: relative;
+  background: #0f1729;
+  color: #e5e7eb;
+  border-radius: 9px;
+  padding: 0.5rem 0.75rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.7125rem;
+  line-height: 1.55;
+  max-height: 280px;
+  overflow: auto;
+}
+.funnel-sheets-code pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.funnel-sheets-copy {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  border-color: transparent !important;
+  font-size: 0.75rem !important;
+  padding: 0.3rem 0.65rem !important;
+}
+.funnel-sheets-copy:hover { background: rgba(255, 255, 255, 0.18) !important; }
+.funnel-btn.small { font-size: 0.75rem; padding: 0.3rem 0.65rem; }
+
+[data-theme='dark'] .funnel-sheets-warn { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+[data-theme='dark'] .funnel-sheets-warn p { color: #fcd34d; }
+[data-theme='dark'] .funnel-sheets-ok { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+[data-theme='dark'] .funnel-sheets-steps ol { color: #e5e7eb; }
+[data-theme='dark'] .funnel-sheets-steps code { background: #374151; color: #e5e7eb; }
+
+/* ── Sheet column / retry button ───────────────────────────────────── */
+.funnel-sheet-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.funnel-retry-flash {
+  font-size: 0.7125rem;
+  font-weight: 500;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+}
+.funnel-retry-flash.ok  { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.funnel-retry-flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+[data-theme='dark'] .funnel-retry-flash.ok { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+[data-theme='dark'] .funnel-retry-flash.err { background: rgba(239, 68, 68, 0.1); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+
+/* ── WhatsApp-session chip picker (product editor) ─────────────────── */
+.funnel-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.funnel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  background: white;
+  border: 1.5px solid #e6e8f0;
+  border-radius: 999px;
+  color: #1e2438;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.funnel-chip:hover { border-color: #3b5cf6; }
+.funnel-chip.is-on {
+  background: linear-gradient(135deg, rgba(59, 92, 246, 0.08), rgba(34, 211, 238, 0.08));
+  border-color: #3b5cf6;
+  color: #0f1729;
+}
+.funnel-chip.is-on svg { color: #3b5cf6; }
+.funnel-chip-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid #d1d5db;
+  flex-shrink: 0;
+}
+.funnel-chip-name { font-weight: 600; }
+.funnel-chip-phone {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.7125rem;
+  color: #6b7280;
+}
+[data-theme='dark'] .funnel-chip { background: #1f2937; border-color: #374151; color: #e5e7eb; }
+[data-theme='dark'] .funnel-chip:hover { border-color: #22d3ee; }
+[data-theme='dark'] .funnel-chip.is-on { background: rgba(34, 211, 238, 0.1); border-color: #22d3ee; color: #f3f4f6; }
+[data-theme='dark'] .funnel-chip.is-on svg { color: #22d3ee; }
+[data-theme='dark'] .funnel-chip-phone { color: #9ca3af; }
+
+/* ── Image gallery (multi-image uploader) ──────────────────────────── */
+.funnel-gallery { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.funnel-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.6rem;
+}
+
+.funnel-gallery-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+  border: 1px solid #e6e8f0;
+}
+.funnel-gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.funnel-gallery-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.funnel-gallery-thumb:hover .funnel-gallery-remove { opacity: 1; }
+.funnel-gallery-remove:hover { background: #b91c1c; }
+
+.funnel-gallery-add {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 2px dashed #d1d5db;
+  border-radius: 10px;
+  background: #fafbff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: #6b7280;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: center;
+  padding: 0.5rem;
+}
+.funnel-gallery-add:hover { border-color: #3b5cf6; color: #3b5cf6; background: rgba(59, 92, 246, 0.04); }
+.funnel-gallery-add.is-drag {
+  border-color: #3b5cf6;
+  background: rgba(59, 92, 246, 0.08);
+  color: #3b5cf6;
+}
+.funnel-gallery-slots {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+[data-theme='dark'] .funnel-gallery-thumb { background: #1f2937; border-color: #374151; }
+[data-theme='dark'] .funnel-gallery-add { background: #111827; border-color: #374151; color: #9ca3af; }
+[data-theme='dark'] .funnel-gallery-add:hover { border-color: #22d3ee; color: #22d3ee; background: rgba(34, 211, 238, 0.06); }
+[data-theme='dark'] .funnel-gallery-slots { color: #6b7280; }
+
+/* ── Custom Fields editor (service extraction schema, migration 0012) ── */
+.funnel-cf {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding: 0.875rem;
+  border: 1.5px solid var(--color-border, #e6e8f0);
+  border-radius: 0.75rem;
+  background: rgba(59, 92, 246, 0.02);
+}
+.funnel-cf-standard { display: flex; flex-direction: column; gap: 0.4rem; }
+.funnel-cf-standard-title,
+.funnel-cf-custom-title {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: var(--color-text-secondary, #6b7280);
+}
+.funnel-cf-note {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #9ca3af);
+  line-height: 1.4;
+}
+.funnel-cf-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.funnel-cf-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+/* The label input takes the remaining width; type + required + trash keep
+   their intrinsic size so a long label never pushes them off-row. */
+.funnel-cf-label { flex: 1 1 9rem; min-width: 8rem; margin: 0; }
+.funnel-cf-type  { flex: 0 0 auto; width: auto; min-width: 6.5rem; margin: 0; }
+.funnel-cf-required {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.funnel-cf-required input { width: 0.95rem; height: 0.95rem; cursor: pointer; accent-color: var(--color-accent, #3b82f6); }
+.funnel-cf-empty {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #9ca3af);
+  font-style: italic;
+  padding: 0.25rem 0;
+}
+.funnel-cf-add { align-self: flex-start; }
+
+[data-theme='dark'] .funnel-cf { background: rgba(34, 211, 238, 0.04); border-color: #374151; }
+[data-theme='dark'] .funnel-cf-note,
+[data-theme='dark'] .funnel-cf-empty { color: #9ca3af; }
+[data-theme='dark'] .funnel-cf-required { color: #d1d5db; }

@@ -1,0 +1,18 @@
+# Web framework + HTTP
+flask>=3.0
+httpx>=0.27
+
+# OpenAI-compatible client (talks to OpenRouter)
+openai>=1.50
+
+# Config
+python-dotenv>=1.0
+
+# Use OS trust store on Windows (kills CERT_VERIFY_FAILED behind corp proxies)
+truststore>=0.10
+
+# Phone-number → country detection (multi-tenant routing)
+phonenumbers>=8.13
+
+# Google Sheets webhook auth (none needed — Apps Script Web App is public POST)
+# (keep this section empty unless we add Stripe etc. later)

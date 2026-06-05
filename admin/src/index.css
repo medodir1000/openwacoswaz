@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-deep-black: #0a0a0f;
+  --color-electric-blue: #3b82f6;
+  --color-luxury-gold: #f59e0b;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f7f8fb;
+  color: #111827;
+}
+
+.glass-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid rgb(228, 228, 231);
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  background: #ffffff;
+  transition: border-color 120ms;
+}
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}

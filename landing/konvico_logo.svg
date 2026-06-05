@@ -1,0 +1,17 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Konvico">
+  <defs>
+    <linearGradient id="kvPurple" x1="22" y1="18" x2="70" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6A3DFF"/>
+      <stop offset="1" stop-color="#A855FF"/>
+    </linearGradient>
+    <linearGradient id="kvOrange" x1="40" y1="62" x2="100" y2="14" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF6A00"/>
+      <stop offset="1" stop-color="#FFC700"/>
+    </linearGradient>
+  </defs>
+  <!-- Stem + lower leg of the K (purple ribbon) -->
+  <path d="M31 20 V100 M31 60 L91 100" stroke="url(#kvPurple)" stroke-width="17"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Upper arm — orange→gold "play / forward" accent that crosses the stem -->
+  <path d="M35 60 L95 20" stroke="url(#kvOrange)" stroke-width="17" stroke-linecap="round"/>
+</svg>

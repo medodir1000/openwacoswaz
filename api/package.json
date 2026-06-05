@@ -1,0 +1,23 @@
+{
+  "name": "leadecombot-api",
+  "version": "0.1.0",
+  "description": "Multi-tenant WhatsApp SaaS — Baileys bridge + Flask brain supervisor",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file=.env --use-system-ca server.js",
+    "dev": "node --env-file=.env --use-system-ca --watch server.js",
+    "brain": "node scripts/supervisor.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "private": true,
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.17.16",
+    "axios": "^1.16.1",
+    "express": "^5.2.1",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
