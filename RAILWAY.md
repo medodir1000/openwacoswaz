@@ -28,19 +28,23 @@ Railway's **private network** (`*.railway.internal`).
 2. **Variables:**
    ```
    API_PORT=2785
-   API_MASTER_KEY=<invent a long random key>
+   API_MASTER_KEY=<invent a long random key>   # SET THIS — else the gateway auto-generates a
+                                                # RANDOM key on each fresh boot (see the
+                                                # "creating default configuration" log line).
+                                                # The brain's OPENWA_API_KEY must equal this.
    NODE_ENV=production
    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
    PUPPETEER_HEADLESS=true
    PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu
    DATABASE_TYPE=sqlite
-   SESSION_DATA_PATH=/data/sessions
-   STORAGE_LOCAL_PATH=/data/media
    ```
+   Leave `SESSION_DATA_PATH` / `STORAGE_LOCAL_PATH` at their defaults → everything lives
+   under **`/app/data`** (the path the gateway logs: `/app/data/.env.generated`).
 3. **Settings → Networking →** set the **private target port to `2785`**. Do **not** add a
    public domain.
-4. **Volume (critical):** add a Volume mounted at **`/data`**. This keeps the WhatsApp
-   session + sqlite across redeploys — without it you re-scan the QR every deploy.
+4. **Volume (critical):** add a Volume mounted at **`/app/data`** — the gateway writes its
+   config + sessions + sqlite + media there. Without it the WhatsApp session **and** the
+   auto-generated API key reset on every redeploy (re-scan QR + key changes each time).
 5. **Deploy.** Copy its private domain from Settings → Networking:
    `<gateway>.railway.internal`.
 
