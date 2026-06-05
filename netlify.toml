@@ -10,17 +10,17 @@
 # 302s those to the dev dashboard on :2886 — but Netlify is static, so we
 # redirect them to the LIVE dashboard here instead (otherwise they 404).
 #
-# 👉 Replace YOUR-DASHBOARD-URL with your real dashboard URL once it's live
-#    (your Railway dashboard domain, or app.closwiz.com on a custom domain).
+# CTAs go to the dashboard app on the app.closwiz.com subdomain — the dashboard
+# service (OpenWA/dashboard) deployed on Railway with that custom domain attached.
 [[redirects]]
   from = "/signup"
-  to = "https://YOUR-DASHBOARD-URL/signup"
+  to = "https://app.closwiz.com/signup"
   status = 302
   force = true
 
 [[redirects]]
   from = "/login"
-  to = "https://YOUR-DASHBOARD-URL/login"
+  to = "https://app.closwiz.com/login"
   status = 302
   force = true
 
