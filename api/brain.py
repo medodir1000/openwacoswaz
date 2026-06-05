@@ -4879,7 +4879,15 @@ def _funnel_seller_id() -> Optional[str]:
 
 def _funnel_only_localhost():
     """Restrict funnel mutations to localhost — the dashboard runs there in
-    dev (Vite proxy) and behind the same reverse proxy in prod."""
+    dev (Vite proxy) and behind the same reverse proxy in prod.
+
+    Cloud: the dashboard proxies to the brain over the private network, so the
+    brain sees the proxy's IP (not localhost). Set FUNNEL_ALLOW_REMOTE=1 to
+    allow it — SAFE ONLY when the brain is reachable PRIVATELY (no public
+    Railway domain): the only thing that can reach it is the dashboard proxy.
+    Never enable this on a publicly-exposed brain (X-Seller-Id is client-set)."""
+    if os.environ.get("FUNNEL_ALLOW_REMOTE", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
     remote = (request.remote_addr or "").lower()
     return remote in ("127.0.0.1", "::1", "localhost") or remote.endswith("::ffff:127.0.0.1")
 
