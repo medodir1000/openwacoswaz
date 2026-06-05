@@ -1,0 +1,56 @@
+# Closwiz dashboard — production nginx (Railway / Docker).
+#
+# The official nginx image runs `envsubst` on /etc/nginx/templates/*.template
+# at container start, substituting the ${...} env vars below (set as Railway
+# service Variables). nginx runtime vars ($host, $uri, $http_upgrade, …) are
+# NOT environment variables, so envsubst leaves them untouched.
+#
+#   PORT         → the port Railway tells us to listen on
+#   GATEWAY_URL  → OpenWA gateway base, e.g. http://openwa.railway.internal:2785
+#   BRAIN_URL    → Flask brain base,    e.g. http://brain.railway.internal:5001
+server {
+    listen ${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+    # Brain (Flask) — tenant API consumed by the dashboard (/funnel/*).
+    # NOTE: in dev this is the Vite proxy; in prod nginx must route it or the
+    # whole seller dashboard (products, billing, sessions list…) breaks.
+    location /funnel/ {
+        proxy_pass ${BRAIN_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+    # Gateway (OpenWA) — REST API.
+    location /api/ {
+        proxy_pass ${GATEWAY_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Gateway — Socket.IO (live session status + pairing QR).
+    location /socket.io/ {
+        proxy_pass ${GATEWAY_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # SPA routing — serve index.html for client-side routes.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

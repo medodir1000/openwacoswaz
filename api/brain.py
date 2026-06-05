@@ -121,6 +121,14 @@ OPENROUTER_API_KEY    = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL   = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 DEFAULT_MODEL         = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
 PORT                  = int(os.environ.get("PORT", "5001"))
+# Bind host. Railway's private network is IPv6, so in the cloud we bind "::"
+# (dual-stack on Linux) — otherwise sibling services can't reach the brain.
+# Plain "0.0.0.0" locally (unchanged). Override explicitly with HOST if needed.
+HOST                  = os.environ.get(
+    "HOST",
+    "::" if (os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PRIVATE_DOMAIN"))
+    else "0.0.0.0",
+)
 
 SUPABASE_URL          = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_KEY  = os.environ.get("SUPABASE_SERVICE_KEY", "")
@@ -8334,9 +8342,23 @@ if __name__ == "__main__":
     # for local installs. The host.docker.internal alias is used only when
     # this brain is itself running inside a Docker container.
     if OPENWA_API_KEY and OPENWA_SESSION_ID:
-        callback = f"http://host.docker.internal:{PORT}/openwa/webhook" \
-            if os.environ.get("OPENWA_INSIDE_DOCKER") else \
-            f"http://127.0.0.1:{PORT}/openwa/webhook"
+        # Where the gateway POSTs inbound messages. In the cloud the gateway is
+        # a SEPARATE service, so it can't reach 127.0.0.1 — pick the brain's own
+        # reachable base URL, in priority order:
+        #   1. PUBLIC_BASE_URL   — explicit (Railway public/private URL, tunnel…)
+        #   2. RAILWAY_PRIVATE_DOMAIN — auto, when deployed on Railway
+        #   3. host.docker.internal — brain itself inside Docker locally
+        #   4. 127.0.0.1         — plain local dev (unchanged behaviour)
+        _rail = os.environ.get("RAILWAY_PRIVATE_DOMAIN")
+        if PUBLIC_BASE_URL:
+            _wh_base = PUBLIC_BASE_URL
+        elif _rail:
+            _wh_base = f"http://{_rail}:{PORT}"
+        elif os.environ.get("OPENWA_INSIDE_DOCKER"):
+            _wh_base = f"http://host.docker.internal:{PORT}"
+        else:
+            _wh_base = f"http://127.0.0.1:{PORT}"
+        callback = f"{_wh_base}/openwa/webhook"
         # Defer to a thread so a slow OpenWA startup doesn't block Flask.
         def _register():
             try:
@@ -8350,4 +8372,4 @@ if __name__ == "__main__":
     else:
         log.info("OpenWA: not configured (set OPENWA_API_KEY + OPENWA_SESSION_ID in .env)")
 
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    app.run(host=HOST, port=PORT, debug=False)

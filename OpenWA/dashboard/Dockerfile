@@ -20,8 +20,17 @@ FROM nginx:alpine
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# nginx config as a TEMPLATE — the official image runs envsubst on
+# /etc/nginx/templates/*.template at startup, injecting the vars below.
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+
+# Defaults for local docker-compose; Railway overrides these via Variables:
+#   PORT        (Railway sets this automatically)
+#   GATEWAY_URL http://<openwa-service>.railway.internal:2785
+#   BRAIN_URL   http://<brain-service>.railway.internal:5001
+ENV PORT=80 \
+    GATEWAY_URL=http://openwa:2785 \
+    BRAIN_URL=http://brain:5001
 
 EXPOSE 80
 
