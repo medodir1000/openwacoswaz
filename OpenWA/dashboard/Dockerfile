@@ -5,8 +5,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies. --legacy-peer-deps: @vitejs/plugin-react@5's peer range
+# doesn't list vite 8 yet, but they work together fine (the local build proves
+# it). npm ci is strict about peers, so we relax it here.
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
