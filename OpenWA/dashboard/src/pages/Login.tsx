@@ -115,7 +115,23 @@ export function Login({ onLogin, initialMode }: LoginProps) {
       window.history.replaceState({}, '', window.location.pathname || '/login');
     (async () => {
       try {
-        const token = await getOAuthAccessToken();
+        // Starting a FRESH Google login: drop any stale identity left by a
+        // previous user (e.g. a prior admin login leaving codhelix_role=admin
+        // + an expired codhelix_admin_token). Without this, a different Google
+        // account inherits the old role and lands on the wrong dashboard with
+        // "Session expired". The exchange below re-sets these from the brain.
+        ['codhelix_role', 'codhelix_admin_token', 'codhelix_email', 'openwa_api_key',
+          'leadecombot_seller_id', 'leadecombot_business_name'].forEach(k => sessionStorage.removeItem(k));
+
+        // detectSessionInUrl exchanges the ?code= asynchronously — the session
+        // may not be ready on the first tick. Retry briefly before giving up so
+        // we never fall back to stale state.
+        let token = await getOAuthAccessToken();
+        for (let i = 0; !token && i < 6; i++) {
+          await new Promise(res => setTimeout(res, 500));
+          if (!alive) return;
+          token = await getOAuthAccessToken();
+        }
         if (!alive) return;
         if (!token) { setOauthBusy(false); cleanUrl(); return; }
         const r = await fetch('/funnel/auth/oauth', {
