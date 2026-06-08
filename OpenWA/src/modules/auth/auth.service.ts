@@ -25,7 +25,31 @@ export class AuthService implements OnModuleInit {
     let displayKey: string;
     let isNewKey = false;
 
-    if (count === 0) {
+    // Operators can PIN the admin key via env (OPENWA_API_KEY) so it always
+    // matches the brain — which hands that exact value to each seller as their
+    // gateway key. Without a pin, production seeds a RANDOM key on every fresh
+    // boot (and it resets whenever the /app/data volume is lost), so the
+    // brain's fixed OPENWA_API_KEY stops matching → every /api/* call returns
+    // 401 "Invalid API key" and session creation fails. Seeding is idempotent
+    // by key hash, so setting the SAME OPENWA_API_KEY on BOTH the gateway and
+    // the brain makes them agree deterministically across redeploys.
+    // (API_MASTER_KEY accepted as an alias for backwards-compat with old docs.)
+    const pinnedKey = (process.env.OPENWA_API_KEY || process.env.API_MASTER_KEY || '').trim();
+
+    if (pinnedKey) {
+      const keyHash = this.hashKey(pinnedKey);
+      const existing = await this.apiKeyRepository.findOne({ where: { keyHash } });
+      if (!existing) {
+        await this.seedApiKey(pinnedKey, 'Pinned Admin Key (OPENWA_API_KEY)', ApiKeyRole.ADMIN);
+        isNewKey = true;
+      }
+      displayKey = pinnedKey;
+      try {
+        writeFileSync(API_KEY_FILE, pinnedKey, 'utf-8');
+      } catch (err) {
+        this.logger.warn('Could not save API key file', { error: String(err) });
+      }
+    } else if (count === 0) {
       // Use predictable key in development, random key in production
       displayKey =
         process.env.NODE_ENV === 'production' ? `owa_k1_${randomBytes(32).toString('hex')}` : 'dev-admin-key';

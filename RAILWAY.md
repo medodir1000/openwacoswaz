@@ -35,10 +35,14 @@ Railway's **private network** (`*.railway.internal`).
                                                 # GATEWAY_URL points at :2785 → every /api/* call
                                                 # hangs and the "Créer une session" spinner never
                                                 # resolves. Keep this equal to the :2785 in GATEWAY_URL.
-   API_MASTER_KEY=<invent a long random key>   # SET THIS — else the gateway auto-generates a
-                                                # RANDOM key on each fresh boot (see the
-                                                # "creating default configuration" log line).
-                                                # The brain's OPENWA_API_KEY must equal this.
+   OPENWA_API_KEY=<invent a long random key>   # SET THIS — pins the gateway's admin key. Without
+                                                # it, the gateway generates a RANDOM key on each
+                                                # fresh boot (resets if the volume is lost), so the
+                                                # brain's key stops matching → /api/* returns 401
+                                                # "Invalid API key" and session creation fails.
+                                                # ⚠️ Set the EXACT SAME value as the brain's
+                                                # OPENWA_API_KEY (step 2). (API_MASTER_KEY also works
+                                                # as a legacy alias for this same gateway var.)
    NODE_ENV=production
    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
    PUPPETEER_HEADLESS=true
