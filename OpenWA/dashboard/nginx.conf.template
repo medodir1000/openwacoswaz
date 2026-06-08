@@ -37,6 +37,14 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+        # Fail FAST when the gateway is down/unreachable (10s) instead of
+        # hanging on nginx's 60s default — a dead gateway would otherwise
+        # freeze the dashboard's "Créer une session" spinner. Keep a long
+        # read timeout because POST /api/sessions/:id/start awaits a Chromium
+        # launch that can legitimately take a while on a cold container.
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
     }
 
     # Gateway — Socket.IO (live session status + pairing QR).

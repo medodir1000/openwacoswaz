@@ -27,7 +27,14 @@ Railway's **private network** (`*.railway.internal`).
    Root Directory = `OpenWA`**. Railway detects the Dockerfile (it installs Chromium).
 2. **Variables:**
    ```
-   API_PORT=2785
+   PORT=2785                                    # ⚠️ MUST be PORT (the code reads process.env.PORT
+                                                # — see src/main.ts / src/config/configuration.ts).
+                                                # API_PORT is NOT read by anything; if you set that
+                                                # instead, the gateway listens on Railway's injected
+                                                # PORT (a different number) while the dashboard's
+                                                # GATEWAY_URL points at :2785 → every /api/* call
+                                                # hangs and the "Créer une session" spinner never
+                                                # resolves. Keep this equal to the :2785 in GATEWAY_URL.
    API_MASTER_KEY=<invent a long random key>   # SET THIS — else the gateway auto-generates a
                                                 # RANDOM key on each fresh boot (see the
                                                 # "creating default configuration" log line).

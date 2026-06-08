@@ -157,7 +157,27 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options.headers,
   };
 
-  const response = await fetch(url, { ...options, headers });
+  // Guard against a hung/unreachable gateway. Without a timeout, a stalled
+  // upstream (e.g. the OpenWA gateway offline on Railway) leaves this await
+  // pending forever — which is exactly what strands UI spinners like the
+  // "Créer une session" button. Abort after 45s so callers surface a clear
+  // error instead of spinning indefinitely. 45s leaves headroom for the one
+  // genuinely slow call (POST /sessions/:id/start launches Chromium).
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45_000);
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, headers, signal: controller.signal });
+  } catch (err) {
+    if (controller.signal.aborted) {
+      throw new Error(
+        'The WhatsApp gateway did not respond (timed out). It may be offline — please try again in a moment.',
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
