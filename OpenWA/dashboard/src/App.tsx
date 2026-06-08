@@ -82,6 +82,14 @@ function AppContent() {
       return;
     }
 
+    // Non-admin login (seller via the brain, or an operator-install raw key).
+    // Trust the role the brain already stashed in codhelix_role — a seller is
+    // ALWAYS 'seller' (a write role), so the create buttons show up. The
+    // gateway validate below may only UPGRADE this to admin/operator (a
+    // privileged operator-install key); it must NEVER downgrade a brain-issued
+    // seller to 'viewer', which would hide every create button.
+    setRole((stashed as UserRole) || 'seller');
+    setIsAuthenticated(true);
     try {
       const response = await fetch('/api/auth/validate', {
         method: 'POST',
@@ -89,12 +97,13 @@ function AppContent() {
       });
       if (response.ok) {
         const data = await response.json();
-        setRole(data.role as UserRole);
+        if (data.role === 'admin' || data.role === 'operator') {
+          setRole(data.role as UserRole);
+        }
       }
     } catch {
-      setRole('viewer');
+      /* keep the brain-issued role (seller) — never fall back to viewer */
     }
-    setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
@@ -125,7 +134,9 @@ function AppContent() {
     })
       .then(res => res.json())
       .then(data => {
-        if (data.valid && data.role) {
+        // Upgrade-only: a privileged gateway key may promote to admin/operator,
+        // but a seller (brain-issued) must never be downgraded to viewer here.
+        if (data.valid && (data.role === 'admin' || data.role === 'operator')) {
           setRole(data.role as UserRole);
         }
       })

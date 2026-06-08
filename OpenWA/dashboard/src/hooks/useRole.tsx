@@ -26,7 +26,9 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     isAdmin: role === 'admin',
     isOperator: role === 'operator',
     isViewer: role === 'viewer',
-    canWrite: role === 'admin' || role === 'operator',
+    // Sellers own their tenant and MUST be able to write (create sessions,
+    // products, services). Only 'viewer' is read-only.
+    canWrite: role === 'admin' || role === 'operator' || role === 'seller',
   };
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
