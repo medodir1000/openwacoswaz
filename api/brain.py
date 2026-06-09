@@ -6792,7 +6792,7 @@ def funnel_admin_subscriptions():
     """
     if request.method == "OPTIONS":
         return _cors(jsonify({}))
-    if not (_require_admin() or _funnel_only_localhost()):
+    if not _require_admin():
         return _cors(jsonify({"error": "forbidden"})), 403
 
     status_filter = (request.args.get("status") or "pending_admin_review").lower()
@@ -6827,7 +6827,7 @@ def funnel_admin_subscription_activate(sub_id: str):
     """
     if request.method == "OPTIONS":
         return _cors(jsonify({}))
-    if not (_require_admin() or _funnel_only_localhost()):
+    if not _require_admin():
         return _cors(jsonify({"error": "forbidden"})), 403
 
     body = request.get_json(silent=True) or {}
@@ -6931,7 +6931,7 @@ def funnel_admin_subscription_reject(sub_id: str):
     """
     if request.method == "OPTIONS":
         return _cors(jsonify({}))
-    if not (_require_admin() or _funnel_only_localhost()):
+    if not _require_admin():
         return _cors(jsonify({"error": "forbidden"})), 403
 
     body = request.get_json(silent=True) or {}
