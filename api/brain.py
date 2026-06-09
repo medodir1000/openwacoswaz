@@ -1,3 +1,6 @@
+# Cloud deploy marker — force Railway to ship the latest brain code:
+#   • admin /funnel/admin/subscriptions* gated by _require_admin (Bearer token)
+#   • seller writes (products/subscribe) honour FUNNEL_ALLOW_REMOTE in the cloud
 """leadecombot brain.py — Multi-tenant WhatsApp SaaS for e-commerce sellers.
 
 Each incoming message arrives from the Baileys bridge with the seller_id
