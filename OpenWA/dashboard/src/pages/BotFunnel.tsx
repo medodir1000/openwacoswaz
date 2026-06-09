@@ -1507,6 +1507,7 @@ function GalleryUploader({
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const busyRef = useRef(false);
   const remainingSlots = Math.max(0, max - value.length);
 
   async function uploadOne(file: File): Promise<string> {
@@ -1538,6 +1539,8 @@ function GalleryUploader({
       else setError('Only PNG/JPG/WEBP/GIF under 5 MB are accepted.');
       return;
     }
+    if (busyRef.current) return;       // ignore a 2nd concurrent trigger (drop + click race)
+    busyRef.current = true;
     setUploading(true);
     setProgress({ done: 0, total: filtered.length });
     const uploaded: string[] = [];
@@ -1552,6 +1555,7 @@ function GalleryUploader({
     }
     if (uploaded.length) onChange([...value, ...uploaded]);
     setUploading(false);
+    busyRef.current = false;
   }
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1640,8 +1644,11 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const busyRef = useRef(false);
 
   async function upload(file: File) {
+    if (busyRef.current) return;       // ignore a 2nd concurrent trigger (drop + click race)
+    busyRef.current = true;
     setError(null);
     setUploading(true);
     setProgress(0);
@@ -1672,6 +1679,7 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
     } finally {
       setUploading(false);
       setProgress(0);
+      busyRef.current = false;
     }
   }
 
