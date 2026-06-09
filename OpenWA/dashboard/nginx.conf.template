@@ -25,6 +25,12 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Product/gallery image uploads (/funnel/upload/*) pass through nginx.
+    # The default client_max_body_size is 1 MB → bigger photos 413 before they
+    # ever reach the brain. The uploader UI allows up to 5 MB; add headroom for
+    # multipart overhead.
+    client_max_body_size 12M;
+
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 
