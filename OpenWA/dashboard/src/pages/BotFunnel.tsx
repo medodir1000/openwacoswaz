@@ -1615,6 +1615,7 @@ function GalleryUploader({
           accept="image/png,image/jpeg,image/webp,image/gif"
           multiple
           onChange={onPick}
+          onClick={(e) => e.stopPropagation()}
           style={{ display: 'none' }}
         />
       </div>
@@ -1724,6 +1725,7 @@ function ImageUploader({ value, onChange }: { value: string; onChange: (url: str
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif"
           onChange={onPick}
+          onClick={(e) => e.stopPropagation()}
           style={{ display: 'none' }}
         />
       </div>
