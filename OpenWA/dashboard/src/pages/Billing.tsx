@@ -417,7 +417,27 @@ export function Billing() {
                     {requestResult.payment_methods.map((m, idx) => (
                       <div key={idx} className="billing-method-card">
                         <h4>{m.label}</h4>
-                        <pre className="billing-method-details">{m.details}</pre>
+                        <div className="billing-method-details">
+                          {m.details.split('\n').map((line, li) => {
+                            const ci = line.indexOf(':');
+                            const value = ci >= 0 ? line.slice(ci + 1).trim() : line.trim();
+                            return (
+                              <div key={li} className="billing-detail-row">
+                                <span className="billing-detail-text">{line}</span>
+                                {value && (
+                                  <button
+                                    type="button"
+                                    className="billing-detail-copy"
+                                    title={t('common.copy', 'Copier')}
+                                    onClick={() => copyReference(value)}
+                                  >
+                                    <Copy size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                         <p className="billing-method-instructions">{m.instructions}</p>
                       </div>
                     ))}
