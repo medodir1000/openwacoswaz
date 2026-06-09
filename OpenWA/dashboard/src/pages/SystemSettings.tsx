@@ -25,6 +25,10 @@ interface SettingsResponse {
   default_openwa_api_url: string;
   default_openwa_session: string;
   supabase_url: string;
+  // Per-country payment methods shown to sellers on Billing. Effective =
+  // admin override merged over the built-in defaults.
+  payment_methods?: Record<string, unknown>;
+  default_payment_methods?: Record<string, unknown>;
 }
 
 const SUGGESTED_MODELS = [
@@ -52,6 +56,10 @@ export function SystemSettings() {
   const [openrouterModel, setOpenrouterModel] = useState('');
   const [showKey, setShowKey] = useState(false);
 
+  // Payment methods editor (JSON), pre-filled with the effective per-country config.
+  const [paymentJson, setPaymentJson] = useState('');
+  const [paySaving, setPaySaving] = useState(false);
+
   async function load() {
     setLoading(true);
     setError(null);
@@ -64,6 +72,10 @@ export function SystemSettings() {
       if (!r.ok) { setError(j.error || 'Could not load settings'); return; }
       setCurrent(j);
       setOpenrouterModel(j.openrouter_model || '');
+      // Pre-fill the payment editor with the effective config (override merged
+      // over defaults), so the admin edits the real values in place.
+      try { setPaymentJson(JSON.stringify(j.payment_methods || {}, null, 2)); }
+      catch { setPaymentJson('{}'); }
     } catch {
       setError('Could not reach the server');
     } finally {
@@ -128,6 +140,38 @@ export function SystemSettings() {
       await load();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function savePayments() {
+    setPaySaving(true); setError(null); setSuccessMsg(null);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(paymentJson);
+    } catch {
+      setError('Payment methods: invalid JSON — check the brackets and commas.');
+      setPaySaving(false);
+      return;
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      setError('Payment methods must be an object keyed by country code (e.g. { "MA": [...] }).');
+      setPaySaving(false);
+      return;
+    }
+    try {
+      const r = await fetch('/funnel/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ payment_methods: parsed }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setError(j.error || 'Save failed'); return; }
+      setSuccessMsg('Payment methods saved — sellers now see your real details on Billing.');
+      await load();
+    } catch {
+      setError('Could not reach the server');
+    } finally {
+      setPaySaving(false);
     }
   }
 
@@ -216,6 +260,47 @@ export function SystemSettings() {
           <button type="button" className="sys-primary" onClick={save} disabled={saving || loading}>
             {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />}
             {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </section>
+
+      <section className="sys-card">
+        <div className="sys-card-head">
+          <KeyRound size={18} />
+          <h3>Payment methods (per country)</h3>
+        </div>
+        <p className="sys-card-sub">
+          What sellers see on the <strong>Billing</strong> page when they subscribe.
+          Put your <strong>real</strong> RIB / Orange Money numbers here — they're
+          stored privately in the database, <strong>never in the code/git</strong>.
+          Keyed by 2-letter country (<code>MA</code>, <code>SN</code>, <code>GN</code>, <code>CI</code>…);
+          a seller sees the entry for their country.
+        </p>
+        <label className="sys-field">
+          <span className="sys-label"><Settings2 size={14} /> payment_methods (JSON)</span>
+          <textarea
+            value={paymentJson}
+            onChange={(e) => setPaymentJson(e.target.value)}
+            spellCheck={false}
+            rows={16}
+            style={{
+              width: '100%', fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+              fontSize: '0.8rem', lineHeight: 1.5, padding: '.7rem .85rem',
+              borderRadius: '10px', border: '1.5px solid #e6e8f0', background: '#fbfbfe',
+              color: '#1a1d29', resize: 'vertical',
+            }}
+          />
+          <span className="sys-hint">
+            Each country → a list of <code>{`{ method, label, details, instructions }`}</code>.
+            Edit mainly <code>details</code> (your RIB / Orange Money number) and
+            <code>instructions</code>. Example — <code>"details": "Orange Money : +221 77 123 45 67 (Nom)"</code>.
+            Remove a country to fall back to the built-in default.
+          </span>
+        </label>
+        <div className="sys-actions">
+          <button type="button" className="sys-primary" onClick={savePayments} disabled={paySaving || loading}>
+            {paySaving ? <Loader2 className="spin" size={16} /> : <Save size={16} />}
+            {paySaving ? 'Saving…' : 'Save payment methods'}
           </button>
         </div>
       </section>

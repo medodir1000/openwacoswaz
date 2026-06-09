@@ -5570,6 +5570,11 @@ def funnel_admin_settings():
 
     if request.method == "GET":
         key = get_openrouter_key()
+        # Effective payment methods = admin override (system_settings) merged
+        # over the built-in defaults, per country. The admin edits these so the
+        # REAL RIB / Orange Money numbers live in the DB (never in git).
+        _pm_override = _load_system_settings().get("payment_methods") or {}
+        _pm_effective = {**DEFAULT_PAYMENT_METHODS, **_pm_override}
         return _cors(jsonify({
             "openrouter_key_masked":  _mask_key(key),
             "openrouter_key_present": bool(key),
@@ -5577,6 +5582,9 @@ def funnel_admin_settings():
             "default_openwa_api_url": OPENWA_API_URL,
             "default_openwa_session": OPENWA_SESSION_ID,
             "supabase_url":           SUPABASE_URL,
+            "payment_methods":          _pm_effective,
+            "payment_methods_override": _pm_override,
+            "default_payment_methods":  DEFAULT_PAYMENT_METHODS,
         })), 200
 
     # POST — accept any subset of writable settings.
@@ -5593,6 +5601,21 @@ def funnel_admin_settings():
         v = (body.get("openrouter_model") or "").strip()
         set_system_setting("openrouter_model", v or None)
         updates.append("openrouter_model")
+
+    # Payment methods — per-country bank/mobile-money details shown to sellers
+    # on the Billing page. Stored in system_settings (private DB), so the admin
+    # can put real RIB / Orange Money numbers without committing them to git.
+    # Expects { "MA": [{method,label,details,instructions}, ...], "SN": [...] }.
+    if "payment_methods" in body:
+        pm = body.get("payment_methods")
+        if isinstance(pm, dict):
+            # Drop empty-country entries so the resolver falls back to defaults.
+            cleaned = {str(k).upper(): v for k, v in pm.items()
+                       if isinstance(v, list) and len(v) > 0}
+            set_system_setting("payment_methods", cleaned)
+            updates.append("payment_methods")
+        else:
+            return _cors(jsonify({"error": "payment_methods must be an object keyed by country code"})), 400
 
     return _cors(jsonify({"ok": True, "updated": updates})), 200
 
