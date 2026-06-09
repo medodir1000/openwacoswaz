@@ -33,6 +33,8 @@ import {
   ListChecks,
   Radio,
   CircleDollarSign,
+  Megaphone,
+  Copy,
 } from 'lucide-react';
 import './BotFunnel.css';
 import { useServiceConfig, invalidateServiceConfig } from '../hooks/useServiceConfig';
@@ -425,6 +427,7 @@ function ProductDrawer({ product, onClose, onSaved }: {
   const [draft, setDraft] = useState<Product>(product);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedAd, setCopiedAd] = useState(false);
 
   const isNew = !product.id;
 
@@ -493,6 +496,12 @@ function ProductDrawer({ product, onClose, onSaved }: {
   const k = (prodKey: string, servKey: string, prodDef: string, servDef: string) =>
     isService ? t(servKey, servDef) : t(prodKey, prodDef);
   const optional = t('botFunnel.drawer.optional', 'optional');
+  // Auto-generated Click-to-WhatsApp pre-filled message. Naming the product in
+  // the customer's first message is the ONLY way the bot detects which product
+  // an ad is about (the gateway exposes no Meta ad-referral), so we hand the
+  // seller the exact text to paste into their FB/IG ad's pre-filled message.
+  const adName = (draft.name || '').trim();
+  const adPrefill = adName ? `Bonjour, je veux ${adName} 🛍️` : '';
 
   return (
     <div className="funnel-drawer-backdrop" onClick={onClose}>
@@ -615,6 +624,51 @@ function ProductDrawer({ product, onClose, onSaved }: {
               <SheetsUrlHelper value={draft.sheets_webhook_url || ''} />
             </Field>
           </Section>
+
+          {/* ── Facebook / Instagram ad helper (Click-to-WhatsApp) ── */}
+          {!isService && (
+            <Section
+              title={t('botFunnel.drawer.secAd', 'Pub Facebook / Instagram')}
+              icon={<Megaphone size={18} />}
+              subtitle={t('botFunnel.drawer.secAdSub', 'Le message à coller dans votre pub Click-to-WhatsApp pour que le bot reconnaisse CE produit.')}
+            >
+              <Field label={t('botFunnel.drawer.adPrefillLabel', 'Message pré-rempli (généré automatiquement depuis le nom)')}>
+                <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                  <input
+                    className="funnel-input"
+                    readOnly
+                    value={adPrefill || t('botFunnel.drawer.adPrefillEmpty', '⬆ Saisissez d’abord le nom du produit ci-dessus')}
+                    onFocus={(e) => { if (adPrefill) e.currentTarget.select(); }}
+                    style={{ flex: 1, color: adPrefill ? undefined : '#9aa0ad' }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!adPrefill}
+                    onClick={() => {
+                      if (!adPrefill) return;
+                      void navigator.clipboard?.writeText(adPrefill);
+                      setCopiedAd(true);
+                      setTimeout(() => setCopiedAd(false), 1800);
+                    }}
+                    style={{
+                      whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '.3rem',
+                      padding: '.55rem .8rem', borderRadius: '10px', border: '1.5px solid #e6e8f0',
+                      background: copiedAd ? '#16a34a' : '#fff', color: copiedAd ? '#fff' : '#6A3DFF',
+                      cursor: adPrefill ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: '.82rem',
+                    }}
+                  >
+                    {copiedAd
+                      ? <><CheckCircle2 size={14} /> {t('common.copied', 'Copié')}</>
+                      : <><Copy size={14} /> {t('common.copy', 'Copier')}</>}
+                  </button>
+                </div>
+              </Field>
+              <p style={{ fontSize: '.78rem', color: '#6b7280', lineHeight: 1.55, margin: '.4rem 0 0' }}>
+                {t('botFunnel.drawer.adHint',
+                   'Collez ce texte dans votre pub Facebook / Instagram → « Message → Message pré-rempli ». Quand un client clique sur la pub, ce message part tout seul, et le bot reconnaît CE produit grâce à son nom. 💡 Astuce : ajoutez des variantes du nom dans les Alias ci-dessus.')}
+              </p>
+            </Section>
+          )}
 
           {/* ── Price ────────────────────────────────────────────── */}
           <Section
