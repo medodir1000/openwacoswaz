@@ -3579,12 +3579,39 @@ def openwa_send_text(to_jid: str, text: str,
     return False
 
 
-def openwa_register_webhook(callback_url: str) -> bool:
-    """Idempotently register `callback_url` as the message.received webhook
-    for the configured session. Called automatically at brain startup so
-    OpenWA starts piping inbound messages to /openwa/webhook without manual
-    dashboard clicks."""
-    sid = (OPENWA_SESSION_ID or "").strip()
+def _webhook_base() -> str:
+    """The brain's externally-reachable base URL that the OpenWA gateway POSTs
+    inbound messages to. Mirrors the boot-time priority order so a per-seller
+    session webhook resolves to the same callback as the OPENWA_SESSION_ID one."""
+    if PUBLIC_BASE_URL:
+        return PUBLIC_BASE_URL
+    _rail = os.environ.get("RAILWAY_PRIVATE_DOMAIN")
+    if _rail:
+        return f"http://{_rail}:{PORT}"
+    if os.environ.get("OPENWA_INSIDE_DOCKER"):
+        return f"http://host.docker.internal:{PORT}"
+    return f"http://127.0.0.1:{PORT}"
+
+
+def _ensure_session_webhook(session_id: str) -> None:
+    """Best-effort, non-blocking: make sure OpenWA pipes `session_id`'s inbound
+    messages to our /openwa/webhook. The gateway stores webhooks PER SESSION, so
+    a freshly-claimed seller session is connected but SILENT until this runs —
+    this is what lets the bot actually reply for multi-tenant seller numbers
+    (not just the single hardcoded OPENWA_SESSION_ID)."""
+    sid = (session_id or "").strip()
+    if not (sid and OPENWA_API_KEY):
+        return
+    cb = f"{_webhook_base()}/openwa/webhook"
+    threading.Thread(target=lambda: openwa_register_webhook(cb, sid), daemon=True).start()
+
+
+def openwa_register_webhook(callback_url: str, session_id: str = "") -> bool:
+    """Idempotently register `callback_url` as the message.received webhook for
+    `session_id` (falls back to OPENWA_SESSION_ID). Called at brain startup for
+    the configured session AND per seller-session on claim, so OpenWA pipes
+    inbound messages to /openwa/webhook without manual dashboard clicks."""
+    sid = (session_id or OPENWA_SESSION_ID or "").strip()
     if not (sid and OPENWA_API_KEY and callback_url):
         return False
     try:
@@ -7899,7 +7926,9 @@ def funnel_wa_sessions_register():
         if owner and owner != seller_id:
             # Belongs to another tenant — never steal it.
             return _cors(jsonify({"error": "already_owned"})), 409
-        # Already ours → idempotent success.
+        # Already ours → idempotent success. Re-ensure the webhook in case the
+        # gateway dropped it (redeploy / volume reset) so the bot doesn't go mute.
+        _ensure_session_webhook(jid)
         return _cors(jsonify({"ok": True, "jid": jid, "status": "already_owned"})), 200
 
     # Free-trial hard gate — block connecting a NEW WhatsApp number once the
@@ -7948,6 +7977,7 @@ def funnel_wa_sessions_register():
     created = _supa_post("seller_whatsapp_sessions", row)
     if created:
         log.info("[wa-sessions] seller %s registered new session %s", seller_id, jid)
+        _ensure_session_webhook(jid)
         return _cors(jsonify({"ok": True, "jid": jid, "status": "registered"})), 200
 
     # Insert failed. The usual cause is the unique(seller_id, phone) constraint:
