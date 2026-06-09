@@ -6,8 +6,19 @@
 # NOT environment variables, so envsubst leaves them untouched.
 #
 #   PORT         → the port Railway tells us to listen on
-#   GATEWAY_URL  → OpenWA gateway base, e.g. http://openwa.railway.internal:2785
-#   BRAIN_URL    → Flask brain base,    e.g. http://brain.railway.internal:5001
+#   GATEWAY_URL  → OpenWA gateway base. PREFER the service's PUBLIC URL, e.g.
+#                  https://skillful-creation-production-0d34.up.railway.app
+#   BRAIN_URL    → Flask brain base. PREFER the PUBLIC URL, e.g.
+#                  https://talented-achievement-production-e242.up.railway.app
+#
+# Why public URLs: Railway reassigns a service's *private* IP on every
+# redeploy; a static proxy_pass to `*.railway.internal` caches the old IP and
+# 502s until the dashboard is ALSO redeployed (the endless "redeploy the
+# dashboard again" dance). The PUBLIC `*.up.railway.app` domain resolves to
+# Railway's stable edge, so this never goes stale. We therefore do NOT force a
+# Host header (nginx defaults Host to $proxy_host = the upstream's own
+# hostname, which is what the Railway edge needs to route to the right
+# service) and we enable SNI for the upstream TLS handshake.
 server {
     listen ${PORT};
     server_name _;
@@ -23,9 +34,10 @@ server {
     location /funnel/ {
         proxy_pass ${BRAIN_URL};
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        proxy_ssl_server_name on;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 15s;
         proxy_read_timeout 120s;
     }
 
@@ -33,16 +45,13 @@ server {
     location /api/ {
         proxy_pass ${GATEWAY_URL};
         proxy_http_version 1.1;
+        proxy_ssl_server_name on;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
-        # Fail FAST when the gateway is down/unreachable (10s) instead of
-        # hanging on nginx's 60s default — a dead gateway would otherwise
-        # freeze the dashboard's "Créer une session" spinner. Keep a long
-        # read timeout because POST /api/sessions/:id/start awaits a Chromium
+        # Long read timeout: POST /api/sessions/:id/start awaits a Chromium
         # launch that can legitimately take a while on a cold container.
-        proxy_connect_timeout 10s;
+        proxy_connect_timeout 15s;
         proxy_send_timeout 180s;
         proxy_read_timeout 180s;
     }
@@ -51,10 +60,12 @@ server {
     location /socket.io/ {
         proxy_pass ${GATEWAY_URL};
         proxy_http_version 1.1;
+        proxy_ssl_server_name on;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+        proxy_connect_timeout 15s;
+        proxy_read_timeout 180s;
     }
 
     # SPA routing — serve index.html for client-side routes.
