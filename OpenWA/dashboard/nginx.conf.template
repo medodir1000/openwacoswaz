@@ -6,8 +6,8 @@
 # NOT environment variables, so envsubst leaves them untouched.
 #
 #   PORT         → the port Railway tells us to listen on
-#   GATEWAY_URL  → OpenWA gateway base, e.g. http://skillful-creation.railway.internal:8080
-#   BRAIN_URL    → Flask brain base,    e.g. http://talented-achievement.railway.internal:5001
+#   GATEWAY_URL  → OpenWA gateway base, e.g. http://openwa.railway.internal:2785
+#   BRAIN_URL    → Flask brain base,    e.g. http://brain.railway.internal:5001
 server {
     listen ${PORT};
     server_name _;
@@ -17,41 +17,21 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 
-    # ── Dynamic upstream resolution (CRITICAL on Railway) ────────────────
-    # Railway reassigns each service's PRIVATE IP on every redeploy. A plain
-    # `proxy_pass http://host.railway.internal:port;` resolves that host ONCE
-    # at nginx startup and caches the IP forever — so after the brain/gateway
-    # redeploys, nginx keeps hammering the dead old IP and every /funnel + /api
-    # call 502s/times-out until the dashboard ITSELF is redeployed.
-    #
-    # Fix: give nginx a `resolver` and put the upstream in a variable. A
-    # variable proxy_pass forces nginx to re-resolve the hostname at request
-    # time (honouring `valid=`), so brain/gateway redeploys are picked up
-    # automatically — no dashboard redeploy needed.
-    #
-    # ${NGINX_LOCAL_RESOLVERS} is injected by the official nginx image's
-    # /docker-entrypoint.d/15-local-resolvers.envsh (reads /etc/resolv.conf),
-    # i.e. the same DNS that resolves *.railway.internal for this container.
-    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
-
     # Brain (Flask) — tenant API consumed by the dashboard (/funnel/*).
     # NOTE: in dev this is the Vite proxy; in prod nginx must route it or the
     # whole seller dashboard (products, billing, sessions list…) breaks.
     location /funnel/ {
-        set $brain_upstream "${BRAIN_URL}";
-        proxy_pass $brain_upstream$request_uri;
+        proxy_pass ${BRAIN_URL};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 10s;
         proxy_read_timeout 120s;
     }
 
     # Gateway (OpenWA) — REST API.
     location /api/ {
-        set $gateway_upstream "${GATEWAY_URL}";
-        proxy_pass $gateway_upstream$request_uri;
+        proxy_pass ${GATEWAY_URL};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -69,15 +49,12 @@ server {
 
     # Gateway — Socket.IO (live session status + pairing QR).
     location /socket.io/ {
-        set $gateway_ws "${GATEWAY_URL}";
-        proxy_pass $gateway_ws$request_uri;
+        proxy_pass ${GATEWAY_URL};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
-        proxy_connect_timeout 10s;
-        proxy_read_timeout 180s;
     }
 
     # SPA routing — serve index.html for client-side routes.
