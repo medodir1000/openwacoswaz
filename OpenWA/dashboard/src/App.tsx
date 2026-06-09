@@ -83,27 +83,19 @@ function AppContent() {
     }
 
     // Non-admin login (seller via the brain, or an operator-install raw key).
-    // Trust the role the brain already stashed in codhelix_role — a seller is
-    // ALWAYS 'seller' (a write role), so the create buttons show up. The
-    // gateway validate below may only UPGRADE this to admin/operator (a
-    // privileged operator-install key); it must NEVER downgrade a brain-issued
-    // seller to 'viewer', which would hide every create button.
+    // The brain (codhelix_role) is the SINGLE source of truth for the platform
+    // role. A brain-issued seller is 'seller' — full stop.
+    //
+    // We must NOT derive the platform role from the gateway's /api/auth/validate:
+    // every seller is handed the SAME shared gateway key, and that key is an
+    // ADMIN-role key on the gateway. Trusting its role would promote EVERY
+    // seller to the admin dashboard (and then admin calls 401 → "Session
+    // expired"). The key is still sent on /api/* requests for gateway access;
+    // we just never read a *platform* role from it. (Admins log in via
+    // email/password and are handled by the codhelix_role==='admin' shortcut
+    // above, so they are unaffected.)
     setRole((stashed as UserRole) || 'seller');
     setIsAuthenticated(true);
-    try {
-      const response = await fetch('/api/auth/validate', {
-        method: 'POST',
-        headers: { 'X-API-Key': key },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.role === 'admin' || data.role === 'operator') {
-          setRole(data.role as UserRole);
-        }
-      }
-    } catch {
-      /* keep the brain-issued role (seller) — never fall back to viewer */
-    }
   };
 
   const handleLogout = () => {
@@ -120,30 +112,11 @@ function AppContent() {
     sessionStorage.removeItem('leadecombot_business_name');
   };
 
-  // Re-validate gateway key on mount for non-admin sessions only. Admin
-  // sessions already have the right role in sessionStorage; the gateway
-  // would happily reply with 'admin' too, but we want a single source of
-  // truth for the platform role.
-  useEffect(() => {
-    if (!savedKey) return;
-    if (sessionStorage.getItem('codhelix_role') === 'admin') return;
-
-    fetch('/api/auth/validate', {
-      method: 'POST',
-      headers: { 'X-API-Key': savedKey },
-    })
-      .then(res => res.json())
-      .then(data => {
-        // Upgrade-only: a privileged gateway key may promote to admin/operator,
-        // but a seller (brain-issued) must never be downgraded to viewer here.
-        if (data.valid && (data.role === 'admin' || data.role === 'operator')) {
-          setRole(data.role as UserRole);
-        }
-      })
-      .catch(() => {
-        // Keep existing role from sessionStorage if validation fails
-      });
-  }, [savedKey, setRole]);
+  // NOTE: we deliberately do NOT re-validate the gateway key to derive the
+  // platform role on mount. The shared gateway key is an ADMIN-role key, so
+  // asking /api/auth/validate for a role would wrongly promote sellers to the
+  // admin dashboard. The role is hydrated from codhelix_role (the brain's
+  // verdict) by the effect above, which is the single source of truth.
 
   const loadingFallback = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
