@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Loader2, AlertTriangle, X, Copy, Hourglass } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, X, Copy, Hourglass, Upload } from 'lucide-react';
 import { useOrganization, formatMoney, PLAN_LABELS } from '../hooks/useOrganization';
 import './Billing.css';
 
@@ -84,6 +84,9 @@ export function Billing() {
   const [modalMonths, setModalMonths] = useState<number>(1);
   // After the user submits the request, we show payment instructions.
   const [requestResult, setRequestResult] = useState<SubscribeRequestResponse | null>(null);
+  // Payment-proof upload (seller sends a screenshot of the transfer).
+  const [proof, setProof] = useState<{ uploading: boolean; done: boolean; error: string | null }>(
+    { uploading: false, done: false, error: null });
 
   useEffect(() => {
     const load = async () => {
@@ -102,11 +105,13 @@ export function Billing() {
     setModalTier(tierId);
     setModalMonths(1);
     setRequestResult(null);
+    setProof({ uploading: false, done: false, error: null });
     setError(null);
   }
   function closeSubscribeModal() {
     setModalTier(null);
     setRequestResult(null);
+    setProof({ uploading: false, done: false, error: null });
   }
 
   async function submitSubscriptionRequest() {
@@ -130,6 +135,35 @@ export function Billing() {
       setError((e as Error).message || 'subscribe failed');
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function submitPaymentProof(file: File) {
+    if (!requestResult) return;
+    setProof({ uploading: true, done: false, error: null });
+    try {
+      // 1) Upload the screenshot → public URL.
+      const fd = new FormData();
+      fd.append('file', file);
+      const up = await fetch('/funnel/upload/product-image', {
+        method: 'POST', headers: { ...(sellerHeader() || {}) }, body: fd,
+      });
+      const uj = await up.json().catch(() => ({}));
+      if (!up.ok || !uj.url) throw new Error(uj.error || `Upload failed (HTTP ${up.status})`);
+      // 2) Attach it to the pending subscription request.
+      const at = await fetch('/funnel/billing/payment-proof', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(sellerHeader() || {}) },
+        body: JSON.stringify({
+          payment_reference: requestResult.payment_reference,
+          payment_proof_url: uj.url,
+        }),
+      });
+      const aj = await at.json().catch(() => ({}));
+      if (!at.ok) throw new Error(aj.error || `HTTP ${at.status}`);
+      setProof({ uploading: false, done: true, error: null });
+    } catch (e) {
+      setProof({ uploading: false, done: false, error: (e as Error).message });
     }
   }
 
@@ -441,6 +475,46 @@ export function Billing() {
                         <p className="billing-method-instructions">{m.instructions}</p>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Payment proof — seller uploads a screenshot of the transfer. */}
+                  <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <span className="billing-eyebrow">
+                      {t('billing.modal.proofTitle', 'Confirmer le paiement')}
+                    </span>
+                    {proof.done ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#16a34a', fontWeight: 600, fontSize: '0.85rem' }}>
+                        <Check size={16} /> {t('billing.modal.proofDone', 'Preuve envoyée ✓ — en cours de vérification.')}
+                      </div>
+                    ) : (
+                      <>
+                        <label style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                          padding: '0.6rem 0.9rem', borderRadius: '10px', cursor: proof.uploading ? 'wait' : 'pointer',
+                          background: '#16a34a', color: '#fff', fontWeight: 600, fontSize: '0.875rem',
+                          opacity: proof.uploading ? 0.7 : 1,
+                        }}>
+                          {proof.uploading
+                            ? <><Loader2 size={16} className="spin" /> {t('billing.modal.proofUploading', 'Envoi…')}</>
+                            : <><Upload size={16} /> {t('billing.modal.proofUpload', "J'ai payé — envoyer la capture")}</>}
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            style={{ display: 'none' }}
+                            disabled={proof.uploading}
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) void submitPaymentProof(f); e.target.value = ''; }}
+                          />
+                        </label>
+                        <p style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.5, margin: 0 }}>
+                          {t('billing.modal.proofHint', "Après le virement / Orange Money, envoyez une capture du reçu ici. L'admin active dès vérification.")}
+                        </p>
+                        {proof.error && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#dc2626', fontSize: '0.8rem' }}>
+                            <AlertTriangle size={14} /> {proof.error}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <div className="billing-status-pending">

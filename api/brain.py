@@ -6830,6 +6830,61 @@ def funnel_billing_subscribe():
     }))
 
 
+@app.route("/funnel/billing/payment-proof", methods=["POST", "OPTIONS"])
+def funnel_billing_payment_proof():
+    """Seller attaches a screenshot of their bank / Orange-Money transfer to a
+    pending subscription request (created by /funnel/billing/subscribe). The
+    admin then sees the proof on the review queue and activates after checking.
+    Body: { payment_reference, payment_proof_url }."""
+    if request.method == "OPTIONS":
+        return _cors(jsonify({}))
+    seller_id = _funnel_seller_id()
+    if not seller_id:
+        return _cors(jsonify({"error": "no seller"})), 400
+    body = request.get_json(silent=True) or {}
+    reference = (body.get("payment_reference") or "").strip()
+    proof_url = (body.get("payment_proof_url") or "").strip()
+    if not (reference and proof_url):
+        return _cors(jsonify({"error": "payment_reference and payment_proof_url required"})), 400
+
+    updated = False
+    # 1) Supabase subscriptions row (billing schema present).
+    org_id = _resolve_organization_id_for_seller(seller_id)
+    if org_id:
+        try:
+            if _supa_patch("subscriptions",
+                           {"payment_reference": reference, "organization_id": org_id},
+                           {"payment_proof_url": proof_url}):
+                updated = True
+        except Exception as exc:
+            log.warning("[payment-proof] supabase patch failed: %s", exc)
+    # 2) Local fallback file (billing schema not yet applied).
+    try:
+        if os.path.exists(PENDING_SUBS_PATH):
+            with open(PENDING_SUBS_PATH, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+            if isinstance(rows, list):
+                changed = False
+                for r in rows:
+                    if (r.get("payment_reference") == reference
+                            and r.get("seller_id") == seller_id):
+                        r["payment_proof_url"] = proof_url
+                        changed = True
+                if changed:
+                    tmp = PENDING_SUBS_PATH + ".tmp"
+                    with open(tmp, "w", encoding="utf-8") as f:
+                        json.dump(rows, f, ensure_ascii=False, indent=2)
+                    os.replace(tmp, PENDING_SUBS_PATH)
+                    updated = True
+    except Exception as exc:
+        log.warning("[payment-proof] fallback update failed: %s", exc)
+
+    if not updated:
+        return _cors(jsonify({"error": "request_not_found"})), 404
+    log.info("[payment-proof] seller=%s ref=%s proof attached", seller_id, reference)
+    return _cors(jsonify({"ok": True, "payment_reference": reference})), 200
+
+
 # ════════════════════════════════════════════════════════════════════════
 # ADMIN — manual subscription review queue
 # ════════════════════════════════════════════════════════════════════════
