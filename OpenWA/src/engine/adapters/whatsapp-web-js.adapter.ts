@@ -155,6 +155,26 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
           isGroup: msg.from.endsWith('@g.us'),
         };
 
+        // Resolve the REAL sender phone. With WhatsApp's LID privacy, msg.from
+        // can be an opaque <digits>@lid that is NOT a phone number (it showed up
+        // as the "customer number" in the dashboard). The Contact still carries
+        // the real number — critical for COD delivery — so surface it.
+        if (!incomingMessage.isGroup && !msg.fromMe) {
+          try {
+            const contact = await msg.getContact();
+            const realNum = String(contact?.number || '').replace(/\D+/g, '');
+            if (realNum) incomingMessage.senderPhone = realNum;
+            incomingMessage.senderName =
+              contact?.pushname ||
+              contact?.name ||
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (msg as any)?._data?.notifyName ||
+              undefined;
+          } catch (error) {
+            this.logger.error('Error resolving sender contact', String(error));
+          }
+        }
+
         // Handle media
         if (msg.hasMedia) {
           try {

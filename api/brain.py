@@ -4916,7 +4916,14 @@ def openwa_webhook():
         log.info("[openwa] duplicate delivery %s — short-circuiting", idem_key[:24])
         return _cors(jsonify({"ok": True, "ignored": "duplicate-delivery"})), 200
 
-    sender_pn = re.sub(r"\D+", "", from_jid.split("@", 1)[0]) if from_jid else ""
+    # Prefer the gateway-resolved REAL phone (msg.getContact().number). Under
+    # WhatsApp's LID privacy, from_jid is an opaque <digits>@lid that is NOT a
+    # dialable number — it was leaking into the dashboard as the "customer
+    # number". The resolved senderPhone is the real number COD delivery needs;
+    # fall back to the JID digits only when the gateway couldn't resolve it.
+    _resolved_pn = re.sub(r"\D+", "", str(data.get("senderPhone") or ""))
+    _jid_pn = re.sub(r"\D+", "", from_jid.split("@", 1)[0]) if from_jid else ""
+    sender_pn = _resolved_pn or _jid_pn
 
     # The bot's OWN number lives in `to` — it's the stable key the async
     # resolver uses to self-heal the seller mapping when OpenWA's session

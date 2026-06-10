@@ -32,6 +32,11 @@ export interface IncomingMessage {
   timestamp: number;
   fromMe: boolean;
   isGroup: boolean;
+  // Resolved REAL phone of the sender (digits only). With WhatsApp's LID
+  // privacy, `from` can be an opaque <digits>@lid that is NOT a phone number;
+  // the contact still carries the real number, which COD delivery needs.
+  senderPhone?: string;
+  senderName?: string;
   media?: {
     mimetype: string;
     filename?: string;
