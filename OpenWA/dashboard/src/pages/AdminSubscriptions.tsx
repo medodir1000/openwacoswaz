@@ -70,11 +70,19 @@ export function AdminSubscriptions() {
   // Per-row local state — months override + admin notes + rejection reason.
   const [overrides, setOverrides] = useState<Record<string, { months?: number; notes?: string; rejectReason?: string }>>({});
 
+  // Admin auth — the brain's _require_admin() reads the Supabase access token
+  // from the Authorization header. Without it every admin call 403s (this page
+  // was sending NO auth header → "HTTP 403" on load).
+  function adminHeaders(): Record<string, string> {
+    const token = sessionStorage.getItem('codhelix_admin_token') || '';
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   async function load() {
     setError(null);
     try {
       const url = `/funnel/admin/subscriptions?status=${encodeURIComponent(filter)}`;
-      const r = await fetch(url);
+      const r = await fetch(url, { headers: adminHeaders() });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
       setRows(j.subscriptions || []);
@@ -92,7 +100,7 @@ export function AdminSubscriptions() {
     try {
       const r = await fetch(`/funnel/admin/subscriptions/${row.id}/activate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders() },
         body: JSON.stringify({
           months_granted,
           admin_notes: override.notes || null,
@@ -118,7 +126,7 @@ export function AdminSubscriptions() {
     try {
       const r = await fetch(`/funnel/admin/subscriptions/${row.id}/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders() },
         body: JSON.stringify({ rejection_reason: reason }),
       });
       if (!r.ok) {
