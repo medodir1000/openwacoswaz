@@ -3480,13 +3480,38 @@ def openwa_send_image(to_jid: str, image_url: str,
     candidates = [f"{digits}@lid", f"{digits}@c.us"] if is_lid_hint \
                  else [f"{digits}@c.us", f"{digits}@lid"]
 
+    # Fetch the bytes in the BRAIN and send BASE64 to the gateway. The gateway's
+    # MessageMedia.fromUrl path is flaky — it silently drops the image while the
+    # send-image call still returns 2xx (the "said 'Voici la photo' but nothing
+    # arrived" bug). Base64 takes the gateway's pure-base64 branch, which never
+    # re-fetches. follow_redirects: Supabase storage URLs commonly 30x-redirect.
+    img_b64 = None
+    img_mime = "image/jpeg"
+    try:
+        _ir = httpx.get(image_url, timeout=30, follow_redirects=True)
+        _ir.raise_for_status()
+        img_b64 = base64.b64encode(_ir.content).decode("ascii")
+        _ct = (_ir.headers.get("content-type") or "").split(";")[0].strip()
+        if _ct:
+            img_mime = _ct
+    except Exception as exc:
+        log.warning("[openwa] image prefetch failed for %s: %s — falling back to url",
+                    image_url, exc)
+
     for chat_id in candidates:
         try:
+            _body = {"chatId": chat_id, "caption": caption or ""}
+            if img_b64:
+                _body["base64"] = img_b64
+                _body["mimetype"] = img_mime
+                _body["filename"] = "image.jpg"
+            else:
+                _body["url"] = image_url
             r = httpx.post(
                 f"{base}/api/sessions/{sid}/messages/send-image",
                 headers=_openwa_headers(key),
-                json={"chatId": chat_id, "url": image_url, "caption": caption or ""},
-                timeout=30,
+                json=_body,
+                timeout=45,
             )
             if r.status_code in (200, 201, 202):
                 # Mirror the send-text "soft fail" detection: a 2xx with
