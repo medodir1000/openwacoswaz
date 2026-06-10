@@ -4762,6 +4762,32 @@ def _openwa_already_seen(idem_key: str) -> bool:
     return False
 
 
+def _split_for_human(text: str) -> List[str]:
+    """Break a bot reply into 1-3 natural chunks so it lands like a person
+    typing in bursts (typing… → line → typing… → line) instead of one instant
+    wall of text. Honours the LLM's own line breaks first, then splits a long
+    single blob on sentence boundaries. Each chunk is sent separately, so each
+    gets its OWN proportional "typing…" pause via openwa_send_text. Caps at 3
+    chunks; never returns empty parts."""
+    text = (text or "").strip()
+    if not text:
+        return []
+    lines = [ln.strip() for ln in re.split(r"\n+", text) if ln.strip()]
+    if len(lines) > 1:
+        chunks = lines
+    elif len(text) > 160:
+        sents = [s.strip() for s in re.split(r"(?<=[.!?؟])\s+", text) if s.strip()]
+        if len(sents) <= 1:
+            return [text]
+        mid = (len(sents) + 1) // 2
+        chunks = [" ".join(sents[:mid]), " ".join(sents[mid:])]
+    else:
+        return [text]
+    if len(chunks) > 3:
+        chunks = chunks[:2] + [" ".join(chunks[2:])]
+    return [c for c in chunks if c]
+
+
 def _process_openwa_async(seller_id: str, from_jid: str, text: str,
                           sender_pn: str, session_id: str,
                           bot_pn: str = "") -> None:
@@ -4801,12 +4827,16 @@ def _process_openwa_async(seller_id: str, from_jid: str, text: str,
             # If the seller row pins a different session_id than the
             # webhook came on, trust the webhook (the bot might be paired
             # to a backup session not yet recorded in Settings).
-            openwa_send_text(
-                from_jid, reply,
-                session_id=session_id,
-                api_url=api_url,
-                api_key=api_key,
-            )
+            # Send in natural chunks so the reply arrives like a human typing
+            # in bursts — each chunk drives its OWN "typing…" pause (sized to
+            # that chunk) instead of dumping the whole message in one go.
+            for _chunk in _split_for_human(reply):
+                openwa_send_text(
+                    from_jid, _chunk,
+                    session_id=session_id,
+                    api_url=api_url,
+                    api_key=api_key,
+                )
     except Exception as exc:
         log.exception("[openwa-async] processing failed for %s: %s", from_jid, exc)
 
