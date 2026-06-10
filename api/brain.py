@@ -4229,10 +4229,21 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
     # gallery is capped at 4 images so we don't spam, and runs in a
     # background thread so it doesn't slow the LLM reply.
     if fresh_start and not pending.get("gallery_sent_at"):
+        # Lead with the MAIN product photo (image_url), then any gallery images.
+        # Previously this only used gallery_urls — empty when that column isn't
+        # migrated — so a product with just a main photo sent NOTHING. Now the
+        # customer always sees the product on the first turn.
+        _main_img = (product or {}).get("image_url")
         gallery = (product or {}).get("gallery_urls") or []
-        if isinstance(gallery, list) and gallery:
+        _imgs = []
+        if isinstance(_main_img, str) and _main_img.strip().startswith(("http://", "https://")):
+            _imgs.append(_main_img.strip())
+        for _g in (gallery if isinstance(gallery, list) else []):
+            if isinstance(_g, str) and _g.strip().startswith(("http://", "https://")) and _g.strip() not in _imgs:
+                _imgs.append(_g.strip())
+        if _imgs:
             sess_url, sess_key, sess_id = _resolve_openwa_config(seller)
-            urls_to_send = [u for u in gallery[:4] if isinstance(u, str) and u.startswith(("http://", "https://"))]
+            urls_to_send = _imgs[:4]
             if urls_to_send:
                 def _send_gallery():
                     import time
