@@ -17,8 +17,38 @@
 
 @layer theme, base, components, utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
+
+/* ----------------------------------------------------------------------------
+   ClosWiz Master Design System tokens (see design-system/MASTER.md §12).
+   Registering them in @theme generates the utilities (bg-brand-600,
+   text-ink-700, border-ink-200, rounded-card, shadow-soft, font-display…).
+   -------------------------------------------------------------------------- */
+@theme {
+  --color-brand-50:#ECFAF6;  --color-brand-100:#D6F2EC; --color-brand-200:#A9E3D7;
+  --color-brand-300:#6FD6BE; --color-brand-400:#2BC79E; --color-brand-500:#13A08A;
+  --color-brand-600:#0F766E; --color-brand-700:#0B5C56; --color-brand-800:#0A3F3A;
+  --color-brand-900:#06302C; --color-signal:#25D366;
+
+  --color-ink-50:#F6F8F9;  --color-ink-100:#EDF1F3; --color-ink-200:#E3E9EC;
+  --color-ink-300:#C2CACF; --color-ink-400:#8A959D; --color-ink-500:#5B6770;
+  --color-ink-600:#3A4750; --color-ink-700:#243039; --color-ink-800:#16222A;
+  --color-ink-900:#0C1418;
+
+  --color-success:#15803D; --color-success-tint:#DCFCE7;
+  --color-warning:#B54708; --color-warning-tint:#FEF3C7;
+  --color-danger:#B42318;  --color-danger-tint:#FEE4E2;
+  --color-info:#0E7490;    --color-info-tint:#CFF3FB;
+
+  --radius-card:14px; --radius-pill:999px;
+  --shadow-soft:0 2px 4px rgba(12,20,24,.06),0 4px 12px rgba(12,20,24,.05);
+  --shadow-soft-lg:0 6px 16px rgba(12,20,24,.08),0 2px 6px rgba(12,20,24,.05);
+  --font-display:'Plus Jakarta Sans',system-ui,sans-serif;
+  --font-sans:'Inter',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+}
 
 /* ----------------------------------------------------------------------------
    Scoped preflight-lite — mirrors the parts of Tailwind's real preflight that

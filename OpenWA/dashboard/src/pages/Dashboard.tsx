@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  MessageSquare, UserPlus, Target, ShoppingBag, Send, Inbox, Zap,
+  MessageSquare, Target, ShoppingBag, Send, Inbox, Zap,
   ArrowUpRight, ArrowDownRight, Loader2, Sparkles,
+  Plus, Smartphone, MessagesSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -17,8 +18,7 @@ import './Dashboard.css';
 type SeriesPoint = { date: string; conversations: number; orders: number };
 
 // Mirror of /funnel/stats/dashboard. Every field beyond the first four is
-// optional so an older brain (pre-redesign payload) degrades gracefully —
-// the cards fall back to 0 / em-dash rather than crash.
+// optional so an older brain degrades gracefully (cards fall back to 0/em-dash).
 type FunnelStats = {
   messages_today: number;
   api_calls_24h: number;
@@ -49,12 +49,12 @@ type ActivityOrder = {
   products: { name: string | null } | null;
 };
 
-// Closwiz purple-led KPI accents (one hue per card for instant scanning).
+// Teal-led KPI accents (design-system: no purple). One hue per card.
 const ACCENT = {
-  conversations: '#00C896',
-  contacts: '#8B5CF6',
-  resolution: '#06B6D4',
-  conversions: '#F59E0B',
+  conversations: '#0F766E', // brand-600
+  contacts: '#13A08A',      // brand-500
+  resolution: '#0E7490',    // info
+  conversions: '#B54708',   // warning
 };
 // Brand-true channel colours; unknown order sources fall back to grey.
 const CHANNEL_COLORS: Record<string, string> = {
@@ -63,8 +63,7 @@ const CHANNEL_COLORS: Record<string, string> = {
 };
 const CHANNEL_FALLBACK = '#9CA3AF';
 
-// % change of `curr` vs `prev`. up=null means "no movement / no baseline"
-// so the card can hide the arrow rather than show a misleading 0%.
+// % change of `curr` vs `prev`. up=null means "no movement / no baseline".
 function trend(curr: number, prev: number): { pct: number; up: boolean | null } {
   if (!prev && !curr) return { pct: 0, up: null };
   if (!prev) return { pct: 100, up: true };
@@ -126,29 +125,33 @@ type KpiCardProps = {
   sub?: string | null;
 };
 
+// ── KPI tile — Soft UI (bento) ──────────────────────────────────────────
 function KpiCard({ label, value, icon: Icon, accent, trendInfo, spark, progress, sub }: KpiCardProps) {
   return (
-    <div className="kpi-card">
-      <div className="kpi-top">
-        <div className="kpi-meta">
-          <span className="kpi-label">{label}</span>
-          <span className="kpi-value">{value}</span>
+    <div className="group h-full rounded-card border border-ink-200 bg-white p-5 shadow-soft transition duration-200 hover:-translate-y-px hover:shadow-soft-lg">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">{label}</span>
+          <span className="font-display text-2xl font-bold text-ink-900">{value}</span>
         </div>
-        <span className="kpi-icon" style={{ background: `${accent}1a`, color: accent }}>
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]"
+          style={{ background: `${accent}1a`, color: accent }}
+        >
           <Icon size={20} />
         </span>
       </div>
 
       {trendInfo && trendInfo.up !== null && (
-        <div className={`kpi-trend ${trendInfo.up ? 'up' : 'down'}`}>
+        <div className={`mt-2 flex items-center gap-1 text-xs font-medium ${trendInfo.up ? 'text-success' : 'text-danger'}`}>
           {trendInfo.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           <span>{trendInfo.pct}%</span>
-          <span className="kpi-trend-caption">{trendInfo.caption}</span>
+          <span className="text-ink-500">{trendInfo.caption}</span>
         </div>
       )}
-      {sub && <div className="kpi-sub">{sub}</div>}
+      {sub && <div className="mt-2 text-xs text-ink-500">{sub}</div>}
 
-      <div className="kpi-foot">
+      <div className="mt-3 h-[30px]">
         {progress != null
           ? <ProgressBar value={progress} color={accent} />
           : spark
@@ -183,7 +186,6 @@ function AreaChart({
   const convoLine = linePath(convoPts);
   const convoArea = `${convoLine} L${convoPts[convoPts.length - 1][0].toFixed(1)},${(padT + innerH).toFixed(1)} L${convoPts[0][0].toFixed(1)},${(padT + innerH).toFixed(1)} Z`;
 
-  // 3 horizontal gridlines (incl. baseline) + a tick roughly every ~6 days.
   const grid = [0, 0.5, 1].map(f => padT + innerH - f * innerH);
   const tickEvery = Math.ceil(series.length / 6);
 
@@ -266,6 +268,22 @@ function Donut({ segments, total, centerLabel }: {
   );
 }
 
+// ── Quick action button (Soft UI) ───────────────────────────────────────
+function QuickAction({ icon: Icon, label, onClick, primary }: {
+  icon: LucideIcon; label: string; onClick: () => void; primary?: boolean;
+}) {
+  const base =
+    'inline-flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-px cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40';
+  const skin = primary
+    ? 'bg-brand-600 text-white shadow-soft hover:bg-brand-700'
+    : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100';
+  return (
+    <button type="button" onClick={onClick} className={`${base} ${skin}`}>
+      <Icon size={16} /> {label}
+    </button>
+  );
+}
+
 export function Dashboard() {
   const { t, i18n } = useTranslation();
   useDocumentTitle(t('dashboard.title'));
@@ -274,18 +292,13 @@ export function Dashboard() {
   const { data: stats } = useSessionStatsQuery();
   const stopMutation = useStopSessionMutation();
 
-  // Vertical-aware vocabulary for the trends + live-activity feed. `config`
-  // carries localized nouns/templates, `label` resolves them to the active
-  // language, and `fill` interpolates {customer}/{product} placeholders.
+  // Vertical-aware vocabulary for the trends + live-activity feed.
   const { config, label, fill } = useServiceConfig();
 
-  // Billing/trial snapshot (polls /funnel/billing/usage every 30s). Drives
-  // the plan-status banner below the page header. Lives outside the query
-  // client so it shares the same plain-fetch path the top bar uses.
+  // Billing/trial snapshot (polls /funnel/billing/usage every 30s).
   const org = useOrganization();
 
-  // Brain-side analytics. Polled every 30s, scoped by X-Seller-Id (stashed
-  // at login). On failure the cards keep their last-known values.
+  // Brain-side analytics. Polled every 30s, scoped by X-Seller-Id.
   const [funnelStats, setFunnelStats] = useState<FunnelStats | null>(null);
   useEffect(() => {
     const sellerId = sessionStorage.getItem('leadecombot_seller_id') || '';
@@ -306,8 +319,7 @@ export function Dashboard() {
     return () => { cancelled = true; window.clearInterval(id); };
   }, []);
 
-  // Recent activity — last handful of orders, relabeled for the seller's
-  // vertical. Shares the 30s cadence so the feed stays roughly live.
+  // Recent activity — last handful of orders, relabeled for the seller's vertical.
   const [recentOrders, setRecentOrders] = useState<ActivityOrder[]>([]);
   useEffect(() => {
     const sellerId = sessionStorage.getItem('leadecombot_seller_id') || '';
@@ -369,16 +381,16 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
-        <Loader2 className="animate-spin" size={32} />
+      <div className="dashboard tw grid min-h-[400px] place-items-center">
+        <Loader2 className="animate-spin text-brand-600" size={32} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="dashboard" style={{ padding: '2rem' }}>
-        <div style={{ background: '#FEE2E2', padding: '1rem', borderRadius: '8px', color: '#DC2626' }}>
+      <div className="dashboard tw p-8">
+        <div className="rounded-card border border-danger/30 bg-danger-tint p-4 text-danger">
           {t('dashboard.errorPrefix', { message: error })}
         </div>
       </div>
@@ -391,19 +403,16 @@ export function Dashboard() {
   const hasSeries = series.length > 0;
   const convoSeries = series.map(s => s.conversations);
   const orderSeries = series.map(s => s.orders);
-  // Card 1 sparkline: cumulative new conversations across the window — a
-  // rising line that reads as "total growing", distinct from the spiky
-  // daily series the other cards show.
   const convoCumulative = convoSeries.reduce<number[]>((acc, v) => {
     acc.push((acc[acc.length - 1] ?? 0) + v);
     return acc;
   }, []);
 
-  const newContactsTrend = trend(fs?.new_contacts_7d ?? 0, fs?.new_contacts_prev_7d ?? 0);
   const conversionsTrend = trend(fs?.conversions_7d ?? 0, fs?.conversions_prev_7d ?? 0);
   const resolutionPct = Math.round((fs?.resolution_rate ?? 0) * 100);
   const responsePct = Math.round((fs?.response_rate ?? 0) * 100);
   const vsCaption = t('dashboard.kpi.vsPrevWeek');
+  const totalMessages = fs ? (fs.messages_sent ?? 0) + (fs.messages_received ?? 0) : undefined;
 
   const dash = '—';
   const num = (v: number | undefined) => (fs && v != null ? v.toLocaleString() : dash);
@@ -426,13 +435,7 @@ export function Dashboard() {
   };
   const orderLegendLabel = label(config.order.plural);
 
-  // ── Plan / trial status banner ────────────────────────────────────────
-  // Honest snapshot from the billing brain (useOrganization → /funnel/
-  // billing/usage). Self-serve trial signups (is_trial=true) get a live
-  // 2-day / 30-conversation countdown; free + paid sellers see their plan,
-  // real conversation volume and monthly fair-use. We never fabricate a
-  // countdown for non-trial accounts — legacy + paid sellers carry
-  // is_trial=false, so they get "no time limit" / "until renewal" framing.
+  // ── Plan / trial status ───────────────────────────────────────────────
   const planIsPaid = !org.is_trial && org.plan !== 'free';
   const planName = org.is_trial
     ? t('billing.tier.trial', 'Free trial')
@@ -453,40 +456,48 @@ export function Dashboard() {
     ? planTrialPct
     : Math.min(100, Math.max(0, Math.round(org.fair_use_percent)));
 
+  const connected = !!(stats && stats.ready > 0);
+
   return (
-    <div className="dashboard">
+    <div className="dashboard tw font-sans text-ink-700">
       <PageHeader
         title={t('dashboard.title')}
         subtitle={t('dashboard.subtitle')}
         badge={
-          <span className={`status-badge ${stats && stats.ready > 0 ? 'connected' : 'disconnected'}`}>
-            {stats && stats.ready > 0 ? t('common.connected') : t('common.disconnected')}
+          <span className={`status-badge ${connected ? 'connected' : 'disconnected'}`}>
+            {connected ? t('common.connected') : t('common.disconnected')}
           </span>
         }
       />
 
+      {/* Quick actions */}
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <QuickAction icon={Plus} label={t('dashboard.quick.createBot', 'Create bot')} onClick={() => navigate('/funnel')} primary />
+        <QuickAction icon={MessagesSquare} label={t('dashboard.quick.analytics', 'Conversations')} onClick={() => navigate('/conversations')} />
+        <QuickAction icon={Smartphone} label={t('dashboard.quick.connect', 'Connect number')} onClick={() => navigate('/sessions')} />
+      </div>
+
+      {/* Plan / trial tile */}
       <section
-        className={`panel plan-status${org.is_trial ? ' is-trial' : ''}${
-          planTrialEnded ? ' is-ended' : planTrialWarn ? ' is-warn' : ''
+        className={`mb-4 rounded-card border bg-white p-5 shadow-soft ${
+          planTrialEnded ? 'border-danger/40' : planTrialWarn ? 'border-warning/40' : 'border-ink-200'
         }`}
       >
-        <div className="plan-status-head">
-          <span className="plan-status-icon">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-brand-50 text-brand-600">
             {org.is_trial ? <Sparkles size={20} /> : <Zap size={20} />}
           </span>
-          <div className="plan-status-titles">
-            <span className="plan-status-eyebrow">{t('dashboard.plan.eyebrow', 'Your plan')}</span>
-            <div className="plan-status-name-row">
-              <span className="plan-status-name">{planName}</span>
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">{t('dashboard.plan.eyebrow', 'Your plan')}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-display text-lg font-bold text-ink-900">{planName}</span>
               {org.is_trial && (
-                <span className="plan-status-tag">
-                  {planTrialEnded
-                    ? t('dashboard.plan.trialEnded', 'Trial ended')
-                    : t('dashboard.plan.trialTag', 'Trial')}
+                <span className="rounded-pill bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-800">
+                  {planTrialEnded ? t('dashboard.plan.trialEnded', 'Trial ended') : t('dashboard.plan.trialTag', 'Trial')}
                 </span>
               )}
             </div>
-            <span className="plan-status-sub">
+            <span className="text-sm text-ink-500">
               {org.is_trial
                 ? t('dashboard.plan.trialSub', 'Full bot · 1 WhatsApp session, no feature locks')
                 : planIsPaid
@@ -494,50 +505,38 @@ export function Dashboard() {
                   : t('dashboard.plan.freeSub', '1 WhatsApp session · upgrade to lift the limits')}
             </span>
           </div>
-          <button type="button" className="plan-status-cta" onClick={() => navigate('/billing')}>
-            {org.is_trial
-              ? t('dashboard.plan.ctaTrial', 'Choose a plan')
-              : planIsPaid
-                ? t('dashboard.plan.ctaPaid', 'Manage plan')
-                : t('dashboard.plan.ctaFree', 'Upgrade')}
-            <ArrowUpRight size={15} />
-          </button>
-        </div>
-
-        <div className="plan-status-metrics">
-          <div className="plan-metric">
-            <span className="plan-metric-value">
-              {org.is_trial
-                ? Math.max(0, org.trial_days_left)
-                : planIsPaid
-                  ? Math.max(0, org.days_to_renewal)
-                  : '∞'}
-            </span>
-            <span className="plan-metric-label">
-              {org.is_trial
-                ? t('dashboard.plan.daysLeft', 'days left')
-                : planIsPaid
-                  ? t('dashboard.plan.untilRenewal', 'days until renewal')
-                  : t('dashboard.plan.noExpiry', 'no time limit')}
-            </span>
-          </div>
-          <div className="plan-metric">
-            <span className="plan-metric-value">
-              {org.is_trial ? `${planTrialUsed}/${planTrialCap}` : planConversations.toLocaleString()}
-            </span>
-            <span className="plan-metric-label">
-              {org.is_trial
-                ? t('dashboard.plan.conversationsUsed', 'conversations used')
-                : t('dashboard.plan.conversationsHandled', 'conversations handled')}
-            </span>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div className="text-center">
+              <div className="font-display text-xl font-bold text-ink-900">
+                {org.is_trial ? Math.max(0, org.trial_days_left) : planIsPaid ? Math.max(0, org.days_to_renewal) : '∞'}
+              </div>
+              <div className="text-[11px] text-ink-500">
+                {org.is_trial ? t('dashboard.plan.daysLeft', 'days left') : planIsPaid ? t('dashboard.plan.untilRenewal', 'days until renewal') : t('dashboard.plan.noExpiry', 'no time limit')}
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="font-display text-xl font-bold text-ink-900">
+                {org.is_trial ? `${planTrialUsed}/${planTrialCap}` : planConversations.toLocaleString()}
+              </div>
+              <div className="text-[11px] text-ink-500">
+                {org.is_trial ? t('dashboard.plan.conversationsUsed', 'conversations used') : t('dashboard.plan.conversationsHandled', 'conversations handled')}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/billing')}
+              className="inline-flex items-center gap-1.5 rounded-[10px] bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white transition duration-200 hover:bg-brand-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
+            >
+              {org.is_trial ? t('dashboard.plan.ctaTrial', 'Choose a plan') : planIsPaid ? t('dashboard.plan.ctaPaid', 'Manage plan') : t('dashboard.plan.ctaFree', 'Upgrade')}
+              <ArrowUpRight size={15} />
+            </button>
           </div>
         </div>
-
-        <div className="plan-status-bar-row">
-          <div className="plan-status-bar">
-            <div className="plan-status-fill" style={{ width: `${planBarPct}%` }} />
+        <div className="mt-4 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-pill bg-ink-100">
+            <div className="h-full rounded-pill bg-brand-500 transition-[width] duration-300" style={{ width: `${planBarPct}%` }} />
           </div>
-          <span className="plan-status-bar-label">
+          <span className="shrink-0 text-xs text-ink-500">
             {org.is_trial
               ? t('dashboard.plan.trialBar', '{{used}} of {{cap}} free conversations', { used: planTrialUsed, cap: planTrialCap })
               : t('dashboard.plan.fairUseBar', '{{pct}}% of monthly fair-use', { pct: planBarPct })}
@@ -545,173 +544,184 @@ export function Dashboard() {
         </div>
       </section>
 
-      <div className="kpi-grid">
-        <KpiCard
-          label={t('dashboard.kpi.conversations')}
-          value={num(fs?.conversations_total)}
-          icon={MessageSquare}
-          accent={ACCENT.conversations}
-          trendInfo={{ ...newContactsTrend, caption: vsCaption }}
-          spark={hasSeries ? { data: convoCumulative, gradId: 'sp-conv' } : null}
-        />
-        <KpiCard
-          label={t('dashboard.kpi.newContacts')}
-          value={num(fs?.new_contacts_7d)}
-          icon={UserPlus}
-          accent={ACCENT.contacts}
-          trendInfo={{ ...newContactsTrend, caption: vsCaption }}
-          spark={hasSeries ? { data: convoSeries, gradId: 'sp-contacts' } : null}
-        />
-        <KpiCard
-          label={t('dashboard.kpi.resolutionRate')}
-          value={fs ? `${resolutionPct}%` : dash}
-          icon={Target}
-          accent={ACCENT.resolution}
-          sub={fs ? t('dashboard.kpi.resolutionSub', {
-            placed: (fs.order_placed_total ?? 0).toLocaleString(),
-            total: (fs.conversations_sampled ?? 0).toLocaleString(),
-          }) : null}
-          progress={fs ? (fs.resolution_rate ?? 0) : null}
-        />
-        <KpiCard
-          label={t('dashboard.kpi.conversions')}
-          value={num(fs?.conversions_total)}
-          icon={ShoppingBag}
-          accent={ACCENT.conversions}
-          trendInfo={{ ...conversionsTrend, caption: vsCaption }}
-          spark={hasSeries ? { data: orderSeries, gradId: 'sp-conversions' } : null}
-        />
-      </div>
+      {/* Bento grid */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* Stats overview */}
+        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+          <KpiCard
+            label={t('dashboard.kpi.messages', 'Total messages')}
+            value={num(totalMessages)}
+            icon={MessageSquare}
+            accent={ACCENT.conversations}
+            spark={hasSeries ? { data: convoCumulative, gradId: 'sp-conv' } : null}
+          />
+        </div>
+        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+          <KpiCard
+            label={t('dashboard.kpi.resolutionRate')}
+            value={fs ? `${resolutionPct}%` : dash}
+            icon={Target}
+            accent={ACCENT.resolution}
+            sub={fs ? t('dashboard.kpi.resolutionSub', {
+              placed: (fs.order_placed_total ?? 0).toLocaleString(),
+              total: (fs.conversations_sampled ?? 0).toLocaleString(),
+            }) : null}
+            progress={fs ? (fs.resolution_rate ?? 0) : null}
+          />
+        </div>
+        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+          <KpiCard
+            label={t('dashboard.kpi.activeBots', 'Active bots')}
+            value={stats ? String(stats.ready) : dash}
+            icon={Zap}
+            accent={ACCENT.contacts}
+            sub={stats ? t('dashboard.kpi.activeBotsSub', '{{total}} total sessions', { total: stats.total }) : null}
+          />
+        </div>
+        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+          <KpiCard
+            label={t('dashboard.kpi.conversions')}
+            value={num(fs?.conversions_total)}
+            icon={ShoppingBag}
+            accent={ACCENT.conversions}
+            trendInfo={{ ...conversionsTrend, caption: vsCaption }}
+            spark={hasSeries ? { data: orderSeries, gradId: 'sp-conversions' } : null}
+          />
+        </div>
 
-      <div className="dash-row">
-        <section className="panel chart-panel">
-          <div className="section-header">
+        {/* Conversations chart */}
+        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-8">
+          <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2>{t('dashboard.charts.conversationsTitle')}</h2>
-              <span className="section-subtitle">{t('dashboard.charts.conversationsSub')}</span>
+              <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.charts.conversationsTitle')}</h2>
+              <span className="text-sm text-ink-500">{t('dashboard.charts.conversationsSub')}</span>
             </div>
-            <div className="chart-legend">
-              <span className="legend-item"><i className="dot" style={{ background: ACCENT.conversations }} />{t('dashboard.charts.legendConversations')}</span>
-              <span className="legend-item"><i className="dot dashed" style={{ background: ACCENT.conversions }} />{orderLegendLabel}</span>
+            <div className="flex items-center gap-3 text-xs text-ink-500">
+              <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full" style={{ background: ACCENT.conversations }} />{t('dashboard.charts.legendConversations')}</span>
+              <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full" style={{ background: ACCENT.conversions }} />{orderLegendLabel}</span>
             </div>
           </div>
           {hasSeries ? (
             <AreaChart series={series} convoColor={ACCENT.conversations} orderColor={ACCENT.conversions} fmtTick={fmtTick} />
           ) : (
-            <div className="chart-empty">{t('dashboard.charts.noData')}</div>
+            <div className="grid h-[220px] place-items-center text-sm text-ink-400">{t('dashboard.charts.noData')}</div>
           )}
         </section>
 
-        <section className="panel donut-panel">
-          <div className="section-header">
-            <div>
-              <h2>{t('dashboard.charts.channelsTitle')}</h2>
-              <span className="section-subtitle">{t('dashboard.charts.channelsSub')}</span>
-            </div>
+        {/* Channels donut */}
+        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-4">
+          <div className="mb-3">
+            <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.charts.channelsTitle')}</h2>
+            <span className="text-sm text-ink-500">{t('dashboard.charts.channelsSub')}</span>
           </div>
           {channelTotal > 0 ? (
             <Donut segments={channelSegments} total={channelTotal} centerLabel={orderLegendLabel} />
           ) : (
-            <div className="chart-empty">{t('dashboard.charts.noData')}</div>
+            <div className="grid h-[200px] place-items-center text-sm text-ink-400">{t('dashboard.charts.noData')}</div>
           )}
         </section>
-      </div>
 
-      <div className="dash-row">
-        <section className="panel activity-panel">
-          <div className="section-header">
+        {/* Recent WhatsApp chats */}
+        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-8">
+          <div className="mb-3 flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-brand-50 text-brand-600"><MessagesSquare size={16} /></span>
             <div>
-              <h2>{t('dashboard.recentActivity')}</h2>
-              <span className="section-subtitle">{t('dashboard.recentActivitySubtitle')}</span>
+              <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.recentActivity')}</h2>
+              <span className="text-sm text-ink-500">{t('dashboard.recentActivitySubtitle')}</span>
             </div>
           </div>
           {recentOrders.length === 0 ? (
-            <div className="activity-empty">{t('dashboard.noActivity')}</div>
+            <div className="grid h-24 place-items-center text-sm text-ink-400">{t('dashboard.noActivity')}</div>
           ) : (
-            <div className="activity-feed">
+            <ul className="flex flex-col">
               {recentOrders.map(o => (
-                <div key={o.id} className="activity-item">
-                  <span className="activity-icon"><Sparkles size={15} /></span>
-                  <span className="activity-text">{activityLine(o)}</span>
+                <li key={o.id} className="flex items-center gap-3 border-b border-ink-100 py-2.5 last:border-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600"><MessageSquare size={15} /></span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink-700">{activityLine(o)}</span>
                   <span className={`status-pill ${o.status}`}>{orderStatusLabel(o.status)}</span>
-                  <span className="activity-time">{formatLastActive(o.created_at)}</span>
-                </div>
+                  <span className="shrink-0 text-xs text-ink-400">{formatLastActive(o.created_at)}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
 
-        <section className="panel botperf-panel">
-          <div className="section-header">
-            <div>
-              <h2>{t('dashboard.botPerf.title')}</h2>
-              <span className="section-subtitle">{t('dashboard.botPerf.window')}</span>
-            </div>
+        {/* Bot performance */}
+        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-4">
+          <div className="mb-3">
+            <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.botPerf.title')}</h2>
+            <span className="text-sm text-ink-500">{t('dashboard.botPerf.window')}</span>
           </div>
-          <div className="perf-row">
-            <span className="perf-icon" style={{ background: `${ACCENT.conversations}1a`, color: ACCENT.conversations }}><Send size={16} /></span>
-            <span className="perf-label">{t('dashboard.botPerf.messagesSent')}</span>
-            <span className="perf-val">{num(fs?.messages_sent)}</span>
+          <div className="flex items-center gap-3 py-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: `${ACCENT.conversations}1a`, color: ACCENT.conversations }}><Send size={16} /></span>
+            <span className="flex-1 text-sm text-ink-600">{t('dashboard.botPerf.messagesSent')}</span>
+            <span className="font-mono text-sm font-medium text-ink-900">{num(fs?.messages_sent)}</span>
           </div>
-          <div className="perf-row">
-            <span className="perf-icon" style={{ background: `${ACCENT.contacts}1a`, color: ACCENT.contacts }}><Inbox size={16} /></span>
-            <span className="perf-label">{t('dashboard.botPerf.messagesReceived')}</span>
-            <span className="perf-val">{num(fs?.messages_received)}</span>
+          <div className="flex items-center gap-3 py-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: `${ACCENT.contacts}1a`, color: ACCENT.contacts }}><Inbox size={16} /></span>
+            <span className="flex-1 text-sm text-ink-600">{t('dashboard.botPerf.messagesReceived')}</span>
+            <span className="font-mono text-sm font-medium text-ink-900">{num(fs?.messages_received)}</span>
           </div>
-          <div className="perf-block">
-            <div className="perf-block-head">
-              <span className="perf-icon" style={{ background: `${ACCENT.resolution}1a`, color: ACCENT.resolution }}><Zap size={16} /></span>
-              <span className="perf-label">{t('dashboard.botPerf.responseRate')}</span>
-              <span className="perf-val">{fs ? `${responsePct}%` : dash}</span>
+          <div className="mt-2 border-t border-ink-100 pt-3">
+            <div className="mb-1.5 flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: `${ACCENT.resolution}1a`, color: ACCENT.resolution }}><Zap size={16} /></span>
+              <span className="flex-1 text-sm text-ink-600">{t('dashboard.botPerf.responseRate')}</span>
+              <span className="font-mono text-sm font-medium text-ink-900">{fs ? `${responsePct}%` : dash}</span>
             </div>
             <ProgressBar value={fs?.response_rate ?? 0} color={ACCENT.resolution} />
           </div>
         </section>
-      </div>
 
-      <section className="panel sessions-section">
-        <div className="section-header">
-          <h2>{t('dashboard.sessionsOverview')}</h2>
-          <span className="section-subtitle">
-            {t('dashboard.showingSessions', { shown: sessions.length, total: stats?.total ?? 0 })}
-          </span>
-        </div>
-
-        <div className="sessions-table">
-          <div className="table-header">
-            <span>{t('dashboard.columns.sessionId')}</span>
-            <span>{t('dashboard.columns.phone')}</span>
-            <span>{t('dashboard.columns.status')}</span>
-            <span>{t('dashboard.columns.lastActive')}</span>
-            <span>{t('dashboard.columns.actions')}</span>
+        {/* Sessions table */}
+        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft">
+          <div className="mb-3">
+            <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.sessionsOverview')}</h2>
+            <span className="text-sm text-ink-500">
+              {t('dashboard.showingSessions', { shown: sessions.length, total: stats?.total ?? 0 })}
+            </span>
           </div>
-          {sessions.length === 0 ? (
-            <div className="table-row" style={{ justifyContent: 'center', color: 'var(--text-muted)' }}>
-              {t('dashboard.noSessions')}
-            </div>
-          ) : (
-            sessions.map(session => (
-              <div key={session.id} className="table-row">
-                <div className="session-info-cell">
-                  <span className="session-id">{session.id.substring(0, 12)}</span>
-                  <span className="session-name" title={session.name}>{session.name}</span>
-                </div>
-                <span className="phone">{session.phone || '—'}</span>
-                <span className={`status-pill ${session.status}`}>{formatStatus(session.status)}</span>
-                <span className="last-active">{formatLastActive(session.lastActive)}</span>
-                <div className="actions">
-                  <button className="btn-sm" onClick={() => navigate('/sessions')}>{t('dashboard.view')}</button>
-                  {['ready', 'initializing', 'connecting', 'qr_ready'].includes(session.status) && (
-                    <button className="btn-sm danger" onClick={() => handleDisconnect(session.id)}>
-                      {t('dashboard.disconnect')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-ink-200 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-500">
+                  <th className="py-2 pr-3 font-semibold">{t('dashboard.columns.sessionId')}</th>
+                  <th className="py-2 pr-3 font-semibold">{t('dashboard.columns.phone')}</th>
+                  <th className="py-2 pr-3 font-semibold">{t('dashboard.columns.status')}</th>
+                  <th className="py-2 pr-3 font-semibold">{t('dashboard.columns.lastActive')}</th>
+                  <th className="py-2 text-right font-semibold">{t('dashboard.columns.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.length === 0 ? (
+                  <tr><td colSpan={5} className="py-6 text-center text-ink-400">{t('dashboard.noSessions')}</td></tr>
+                ) : (
+                  sessions.map(session => (
+                    <tr key={session.id} className="border-b border-ink-100 transition-colors duration-150 last:border-0 hover:bg-brand-50">
+                      <td className="py-2.5 pr-3">
+                        <div className="flex flex-col">
+                          <span className="font-mono text-xs text-ink-500">{session.id.substring(0, 12)}</span>
+                          <span className="text-ink-800" title={session.name}>{session.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 pr-3 font-mono text-ink-700">{session.phone || '—'}</td>
+                      <td className="py-2.5 pr-3"><span className={`status-pill ${session.status}`}>{formatStatus(session.status)}</span></td>
+                      <td className="py-2.5 pr-3 text-ink-500">{formatLastActive(session.lastActive)}</td>
+                      <td className="py-2.5">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => navigate('/sessions')} className="rounded-md border border-ink-200 px-2.5 py-1 text-xs font-medium text-ink-700 transition duration-150 hover:bg-ink-100 cursor-pointer">{t('dashboard.view')}</button>
+                          {['ready', 'initializing', 'connecting', 'qr_ready'].includes(session.status) && (
+                            <button onClick={() => handleDisconnect(session.id)} className="rounded-md border border-danger/30 px-2.5 py-1 text-xs font-medium text-danger transition duration-150 hover:bg-danger-tint cursor-pointer">{t('dashboard.disconnect')}</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

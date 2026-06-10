@@ -220,7 +220,15 @@
       "resolutionRate": "Resolution rate",
       "conversions": "Conversions",
       "vsPrevWeek": "vs prev. 7 days",
-      "resolutionSub": "{{placed}} / {{total}} conversations"
+      "resolutionSub": "{{placed}} / {{total}} conversations",
+      "messages": "Total messages",
+      "activeBots": "Active bots",
+      "activeBotsSub": "{{total}} total sessions"
+    },
+    "quick": {
+      "createBot": "Create bot",
+      "analytics": "Conversations",
+      "connect": "Connect number"
     },
     "charts": {
       "conversationsTitle": "Conversations",

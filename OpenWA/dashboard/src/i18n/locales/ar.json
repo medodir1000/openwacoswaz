@@ -220,7 +220,15 @@
       "resolutionRate": "معدل الإتمام",
       "conversions": "التحويلات",
       "vsPrevWeek": "مقارنة بـ7 أيام سابقة",
-      "resolutionSub": "{{placed}} / {{total}} محادثة"
+      "resolutionSub": "{{placed}} / {{total}} محادثة",
+      "messages": "إجمالي الرسائل",
+      "activeBots": "بوتات نشطة",
+      "activeBotsSub": "{{total}} جلسة إجمالاً"
+    },
+    "quick": {
+      "createBot": "إنشاء بوت",
+      "analytics": "المحادثات",
+      "connect": "ربط رقم"
     },
     "charts": {
       "conversationsTitle": "المحادثات",
