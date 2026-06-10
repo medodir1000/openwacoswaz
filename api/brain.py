@@ -3727,6 +3727,10 @@ def openwa_resolve_seller_id(session_id: str,
                 log.info("[openwa] self-healed jid for +%s → %s (%s)",
                          bot_pn, session_id,
                          "ok" if healed else "patch-failed")
+                # The number was re-paired (new UUID) — register the webhook on
+                # the new session too so inbound keeps flowing with zero manual
+                # steps for the seller.
+                _ensure_session_webhook(session_id)
             return seller_id
     # (4) Single-seller install fallback.
     sellers = _supa_get("sellers", {"select": "id", "limit": "2"})
@@ -8032,6 +8036,22 @@ def funnel_wa_sessions_register():
     }) or []
     owned_count = len({(r.get("jid") or "") for r in owned_rows if r.get("jid")})
     if owned_count >= limit:
+        # At the plan cap. For a SINGLE-session plan (free trial / Pack 1) the
+        # usual reason a seller lands here is RE-PAIRING their one number — the
+        # QR mints a fresh UUID, so the new jid looks "extra" and the old hard
+        # cap blocked it, stranding the freshly-scanned session and leaving the
+        # dashboard pointing at a dead UUID (the exact loop sellers hit). Treat
+        # it as a re-pair: re-point their existing row to the new jid + register
+        # its webhook, so it just works with zero manual steps. Multi-session
+        # plans keep the hard cap (delete a session first).
+        if limit == 1 and owned_rows:
+            now_iso0 = datetime.now(timezone.utc).isoformat()
+            _supa_patch("seller_whatsapp_sessions", {"seller_id": seller_id},
+                        {"jid": jid, "status": "pending",
+                         "paired_at": now_iso0, "last_seen_at": now_iso0})
+            _ensure_session_webhook(jid)
+            log.info("[wa-sessions] seller %s re-paired (cap=1) → %s", seller_id, jid)
+            return _cors(jsonify({"ok": True, "jid": jid, "status": "repaired"})), 200
         log.info("[wa-sessions] seller %s blocked: %d/%d sessions (cap)",
                  seller_id, owned_count, limit)
         return _cors(jsonify({
