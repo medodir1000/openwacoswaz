@@ -3434,9 +3434,13 @@ def _human_typing_ms(text: str) -> int:
     """
     import random
     chars = len(text or "")
-    raw_ms = 1200 + chars * 30
-    jittered = raw_ms * random.uniform(0.75, 1.25)
-    return int(max(1000, min(5500, jittered)))
+    # ~1.8s "reading + thinking" pause, then ~45ms/char (≈27 WPM — a deliberate
+    # human thumb-typer). Clamp [2.5s, 8s]: a 2.5s floor guarantees the
+    # "typing…" bubble is always visible (no instant-robot replies), while 8s
+    # keeps even long replies from feeling like a ghost.
+    raw_ms = 1800 + chars * 45
+    jittered = raw_ms * random.uniform(0.8, 1.25)
+    return int(max(2500, min(8000, jittered)))
 
 
 def openwa_send_image(to_jid: str, image_url: str,
