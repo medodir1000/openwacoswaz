@@ -1691,8 +1691,7 @@ def build_system_prompt(seller: Dict, product: Dict, pc: Optional[Dict],
         f"  • Treat plain numeric replies (\"1\", \"2\", \"3\"…) as quantity "
         f"answers when you've just asked about quantity. Don't ask again.\n"
         f"  • Never reveal the price before STAGE 4.\n"
-        f"  • Never ask for the phone number — you already have it from "
-        f"WhatsApp.\n"
+        f"  • {'Never ask for the phone number — you already have it from WhatsApp.' if phone_from_jid else 'PHONE HIDDEN: the customer messaged via WhatsApp number-privacy (LID), so you do NOT have their number. During the collecte step you MUST ask ONCE for their delivery phone number (e.g. «Quel est votre numéro de téléphone pour la livraison ?» / «شنو هو رقم الهاتف ديالك للتوصيل؟»). It is required to confirm a COD order.'}\n"
         f"  • Stay in {lang_label} for every word.\n"
         f"  • QUANTITY SANITY: maximum {MAX_ORDER_QUANTITY} units per order. "
         f"If the customer asks for more (e.g. 100, 1000, 100 000 000), "
@@ -4214,6 +4213,19 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
 
     if real_phone and not pending.get("phone"):
         pending["phone"] = real_phone
+
+    # Phone hidden behind a LID and the customer just typed their number?
+    # Capture a phone-like token (8-15 digits, separators allowed) from THIS
+    # message — this is them answering the "what's your delivery number?" ask
+    # the prompt now makes when we have no real phone. Quantity replies
+    # (1-3 digits) never reach the 8-digit floor, so they're never misread.
+    if not pending.get("phone"):
+        _pm = re.search(r"\+?\d[\d\s().\-]{6,}\d", text or "")
+        if _pm:
+            _pd = re.sub(r"\D+", "", _pm.group())
+            if 8 <= len(_pd) <= 15:
+                pending["phone"] = _pd
+                log.info("[phone] captured delivery phone from reply: %s", _pd)
 
     # Early-lead capture: the moment a first message resolves to a
     # product AND we know the customer's phone, drop a partial row in
