@@ -325,8 +325,20 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
 
     if (typeof media.data === 'string') {
       if (media.data.startsWith('http://') || media.data.startsWith('https://')) {
-        // URL
-        messageMedia = await MessageMedia.fromUrl(media.data);
+        // Fetch the bytes ourselves and build the media from base64.
+        // MessageMedia.fromUrl is flaky (mime sniffing / redirects / silent
+        // failures on some CDNs) — it made the bot say "Voici la photo" while
+        // no image ever actually arrived. Direct fetch is reliable; fromUrl is
+        // only the last-resort fallback.
+        try {
+          const resp = await fetch(media.data);
+          if (!resp.ok) throw new Error(`fetch ${resp.status}`);
+          const buf = Buffer.from(await resp.arrayBuffer());
+          const mime = media.mimetype || resp.headers.get('content-type') || 'image/jpeg';
+          messageMedia = new MessageMedia(mime, buf.toString('base64'), media.filename || 'image');
+        } catch {
+          messageMedia = await MessageMedia.fromUrl(media.data, { unsafeMime: true } as any);
+        }
       } else {
         // Base64
         messageMedia = new MessageMedia(media.mimetype, media.data, media.filename);
