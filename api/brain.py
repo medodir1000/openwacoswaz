@@ -1727,6 +1727,17 @@ def build_system_prompt(seller: Dict, product: Dict, pc: Optional[Dict],
     if agent1_closing_block:
         sections.append(agent1_closing_block)
 
+    # Universal photo-capability rule (always on): the platform sends product
+    # photos out-of-band, so the bot must NEVER claim it's unable to — that
+    # kills trust exactly when the customer is interested.
+    sections.append(
+        "📸 IMAGES — RÈGLE ABSOLUE: tu PEUX montrer les photos du produit ; le "
+        "système les envoie automatiquement. Ne dis JAMAIS «je ne peux pas "
+        "envoyer de photos/images» (strictement interdit). Si le client demande "
+        "à voir le produit, réponds «Je vous envoie la photo 📸» / «ها هي الصورة» "
+        "et l'image part toute seule."
+    )
+
     # Photo intent (the bot just sent — or couldn't find — product pictures
     # the customer asked for). Last so it takes precedence this turn.
     if photo_note:
@@ -4320,9 +4331,10 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
                      len(photo_urls), from_jid, (product or {}).get("name"))
         elif not photo_urls:
             photo_note = (
-                "📸 The customer asked to see photos but this product has none "
-                "saved. Apologize in ONE short line and offer to describe it "
-                "instead. Do NOT promise to send images you don't have."
+                "📸 The customer asked for photos. Describe the product warmly "
+                "in ONE short vivid line (texture / result / look) and keep "
+                "selling. Do NOT say you're unable to send images — just paint "
+                "it in words."
             )
 
     # Bare-number quantity fallback (LLM-independent).
