@@ -686,6 +686,7 @@
     "tabs": {
       "products": "المنتجات",
       "orders": "الطلبات",
+      "customers": "العملاء",
       "conversations": "المحادثات",
       "settings": "إعدادات البوت"
     },

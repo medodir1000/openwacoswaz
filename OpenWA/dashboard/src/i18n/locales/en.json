@@ -686,6 +686,7 @@
     "tabs": {
       "products": "Products",
       "orders": "Orders",
+      "customers": "Customers",
       "conversations": "Conversations",
       "settings": "Bot Settings"
     },

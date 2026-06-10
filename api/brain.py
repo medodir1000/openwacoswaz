@@ -8398,6 +8398,107 @@ def funnel_conversations():
     return _cors(jsonify({"conversations": rows}))
 
 
+@app.route("/funnel/customers", methods=["GET", "OPTIONS"])
+def funnel_customers():
+    """Deduplicated buyer list — aggregates orders + conversations by the
+    stable customer_jid (the phone is often hidden behind a LID). Powers the
+    'Clients' tab. Pure-Python rollup; no SQL view / migration needed."""
+    if request.method == "OPTIONS":
+        return _cors(jsonify({}))
+    seller_id = _funnel_seller_id()
+    if not seller_id:
+        return _cors(jsonify({"error": "no seller"})), 400
+
+    orders = _supa_get("orders", {
+        "seller_id": f"eq.{seller_id}",
+        "select": "customer_jid,customer_name,customer_phone,customer_city,"
+                  "total_price,currency,status,created_at,products(name)",
+        "order": "created_at.desc",
+        "limit": "1000",
+    }) or []
+    convos = _supa_get("customer_conversations", {
+        "seller_id": f"eq.{seller_id}",
+        "select": "customer_jid,customer_phone,status,started_at,last_message_at,"
+                  "pending_order_fields,products:detected_product_id(name)",
+        "order": "last_message_at.desc",
+        "limit": "1000",
+    }) or []
+
+    def _pname(obj):
+        p = (obj or {}).get("products")
+        return p.get("name") if isinstance(p, dict) else None
+
+    buckets: Dict[str, Dict] = {}
+
+    def _bucket(jid, phone):
+        k = (jid or "").strip() or ("phone:" + re.sub(r"\D+", "", phone or ""))
+        b = buckets.get(k)
+        if not b:
+            b = {"customer_jid": jid or "", "name": "", "phone": "", "city": "",
+                 "order_count": 0, "total_spent": 0.0, "currency": "",
+                 "last_seen": "", "products": set(), "conversation_status": ""}
+            buckets[k] = b
+        return b
+
+    for o in orders:
+        b = _bucket(o.get("customer_jid"), o.get("customer_phone"))
+        if not b["name"] and o.get("customer_name"):
+            b["name"] = o["customer_name"]
+        if not b["phone"] and o.get("customer_phone"):
+            b["phone"] = o["customer_phone"]
+        if not b["city"] and o.get("customer_city"):
+            b["city"] = o["customer_city"]
+        b["order_count"] += 1
+        try:
+            b["total_spent"] += float(o.get("total_price") or 0)
+        except Exception:
+            pass
+        if not b["currency"] and o.get("currency"):
+            b["currency"] = o["currency"]
+        ts = o.get("created_at") or ""
+        if ts > b["last_seen"]:
+            b["last_seen"] = ts
+        pn = _pname(o)
+        if pn:
+            b["products"].add(pn)
+
+    for c in convos:
+        b = _bucket(c.get("customer_jid"), c.get("customer_phone"))
+        pof = c.get("pending_order_fields") if isinstance(c.get("pending_order_fields"), dict) else {}
+        if not b["name"]:
+            nm = pof.get("name") or pof.get("customer_name") or ""
+            if nm:
+                b["name"] = nm
+        if not b["phone"] and c.get("customer_phone"):
+            b["phone"] = c["customer_phone"]
+        b["conversation_status"] = c.get("status") or b["conversation_status"]
+        ts = c.get("last_message_at") or c.get("started_at") or ""
+        if ts > b["last_seen"]:
+            b["last_seen"] = ts
+        pn = _pname(c)
+        if pn:
+            b["products"].add(pn)
+
+    out = []
+    for b in buckets.values():
+        jid = b["customer_jid"]
+        out.append({
+            "customer_jid": jid,
+            "name": b["name"],
+            "phone": b["phone"],
+            "is_lid": (not b["phone"]) and ("@lid" in jid.lower()),
+            "city": b["city"],
+            "order_count": b["order_count"],
+            "total_spent": round(b["total_spent"], 2),
+            "currency": b["currency"],
+            "last_seen": b["last_seen"],
+            "products": sorted(b["products"]),
+            "conversation_status": b["conversation_status"],
+        })
+    out.sort(key=lambda r: r["last_seen"], reverse=True)
+    return _cors(jsonify({"customers": out}))
+
+
 @app.route("/funnel/conversations/<cid>/messages", methods=["GET", "OPTIONS"])
 def funnel_conversation_messages(cid: str):
     """Full message thread for ONE conversation (inbox center pane)."""

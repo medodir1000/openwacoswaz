@@ -35,6 +35,7 @@ import {
   CircleDollarSign,
   Megaphone,
   Copy,
+  Users,
 } from 'lucide-react';
 import './BotFunnel.css';
 import { useServiceConfig, invalidateServiceConfig } from '../hooks/useServiceConfig';
@@ -187,7 +188,7 @@ type SellerSettings = {
   openwa_api_key_masked?: string;
 };
 
-const TABS = ['products', 'orders', 'conversations', 'settings'] as const;
+const TABS = ['products', 'orders', 'customers', 'conversations', 'settings'] as const;
 type Tab = typeof TABS[number];
 
 // Every /funnel/* call carries the current seller's id (stashed at login)
@@ -253,6 +254,7 @@ export default function BotFunnel({ kind = 'product' }: { kind?: 'product' | 'se
       <div className="funnel-body">
         {tab === 'products' && <ProductsTab kind={kind} />}
         {tab === 'orders' && <OrdersTab kind={kind} />}
+        {tab === 'customers' && <CustomersTab />}
         {tab === 'conversations' && <ConversationsTab />}
         {tab === 'settings' && <SettingsTab />}
       </div>
@@ -264,6 +266,7 @@ function iconForTab(t: Tab, isService = false) {
   const cls = 'funnel-icon';
   if (t === 'products') return isService ? <CalendarClock className={cls} /> : <Tag className={cls} />;
   if (t === 'orders') return isService ? <CalendarCheck className={cls} /> : <ShoppingBag className={cls} />;
+  if (t === 'customers') return <Users className={cls} />;
   if (t === 'conversations') return <MessagesSquare className={cls} />;
   return <Cog className={cls} />;
 }
@@ -272,6 +275,7 @@ function labelForTab(t: Tab, tt: (key: string) => string) {
   return {
     products: tt('botFunnel.tabs.products'),
     orders: tt('botFunnel.tabs.orders'),
+    customers: tt('botFunnel.tabs.customers'),
     conversations: tt('botFunnel.tabs.conversations'),
     settings: tt('botFunnel.tabs.settings'),
   }[t];
@@ -1054,6 +1058,98 @@ function ConversationsTab() {
 }
 
 // ── Settings ─────────────────────────────────────────────────────────────
+// ── Customers ────────────────────────────────────────────────────────────
+type CustomerRow = {
+  customer_jid: string;
+  name: string;
+  phone: string;
+  is_lid?: boolean;
+  city: string;
+  order_count: number;
+  total_spent: number;
+  currency: string;
+  last_seen: string;
+  products: string[];
+  conversation_status?: string;
+};
+
+function CustomersTab() {
+  const { t } = useTranslation();
+  const [rows, setRows] = useState<CustomerRow[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    setBusy(true);
+    try {
+      const r = await ffetch('/funnel/customers');
+      const j = await r.json();
+      setRows(j.customers || []);
+    } finally { setBusy(false); }
+  }
+  useEffect(() => { load(); const id = setInterval(load, 30_000); return () => clearInterval(id); }, []);
+
+  return (
+    <div>
+      <div className="funnel-row-between">
+        <p className="funnel-help">
+          {t('botFunnel.customers.help',
+             'Tous vos clients (commandes + conversations), regroupés par personne. ' +
+             '« Masqué (LID) » apparaît quand WhatsApp cache le numéro du client.')}
+        </p>
+        <button className="funnel-btn ghost" onClick={load} disabled={busy} type="button">
+          {busy ? <Loader2 className="spin" /> : <RefreshCw />} {t('common.refresh', 'Rafraîchir')}
+        </button>
+      </div>
+
+      {!rows && <p className="funnel-muted">{t('common.loading', 'Chargement…')}</p>}
+      {rows && rows.length === 0 && (
+        <div className="funnel-empty">
+          <Users />
+          <p>{t('botFunnel.customers.empty', 'Aucun client pour le moment.')}</p>
+        </div>
+      )}
+      {rows && rows.length > 0 && (
+        <div className="funnel-table-wrap">
+          <table className="funnel-table">
+            <thead>
+              <tr>
+                <th>{t('botFunnel.customers.name', 'Nom')}</th>
+                <th>{t('botFunnel.customers.phone', 'Téléphone')}</th>
+                <th>{t('botFunnel.customers.city', 'Ville')}</th>
+                <th>{t('botFunnel.customers.orders', 'Commandes')}</th>
+                <th>{t('botFunnel.customers.totalSpent', 'Total')}</th>
+                <th>{t('botFunnel.customers.products', 'Produit(s)')}</th>
+                <th>{t('botFunnel.customers.lastSeen', 'Vu')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c) => (
+                <tr key={c.customer_jid}>
+                  <td>{c.name || '—'}</td>
+                  <td className="mono">
+                    {c.phone
+                      ? c.phone
+                      : (
+                        <span className="pill" title={c.customer_jid}>
+                          {t('botFunnel.customers.hiddenLid', 'Masqué (LID)')}
+                        </span>
+                      )}
+                  </td>
+                  <td>{c.city || '—'}</td>
+                  <td>{c.order_count}</td>
+                  <td>{c.total_spent ? `${c.total_spent} ${c.currency}` : '—'}</td>
+                  <td className="small">{c.products && c.products.length ? c.products.join(', ') : '—'}</td>
+                  <td className="muted small">{c.last_seen ? new Date(c.last_seen).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsTab() {
   // The Bot Settings tab now exposes ONLY the high-level Business
   // identity: name, default language, ship-to countries. The four
