@@ -32,6 +32,13 @@ export function Sessions() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Tombstones — ids the user just deleted. fetchSessions re-runs on
+  // create/start/QR-connect and can RACE a delete: an in-flight list (or the
+  // local "pendingLocal" merge of a freshly-created session) would re-surface a
+  // card the user just removed. Excluding these ids guarantees a deleted
+  // session never comes back on its own. (Reset on reload — the backend then
+  // truly has no row, verified server-side, so it won't reappear anyway.)
+  const deletedIdsRef = useRef<Set<string>>(new Set());
 
   // Per-plan WhatsApp-session cap. Free trial = 1 number; paid tiers use
   // their sessions_included. Enforced here for clean UX; the brain also
@@ -75,19 +82,22 @@ export function Sessions() {
         // would surface other sellers' numbers and stale test sessions here.
         const owned = await sessionApi.listOwned(sellerId);
         setSessions(prev => {
-          const ownedIds = new Set(owned.map(s => s.id));
+          const dead = deletedIdsRef.current;
+          const liveOwned = owned.filter(s => !dead.has(s.id));
+          const ownedIds = new Set(liveOwned.map(s => s.id));
           // A number created this browser-session but still mid-pairing has no
           // phone yet, so the brain can't attribute it. Keep it visible until
-          // it pairs (then it joins `owned`) or the page is reloaded.
+          // it pairs (then it joins `owned`) or the page is reloaded — unless
+          // the user deleted it (tombstone).
           const pendingLocal = prev.filter(
-            s => !ownedIds.has(s.id) && PENDING_STATUSES.includes(s.status),
+            s => !ownedIds.has(s.id) && !dead.has(s.id) && PENDING_STATUSES.includes(s.status),
           );
-          return [...owned, ...pendingLocal];
+          return [...liveOwned, ...pendingLocal];
         });
       } else {
         // Admin context (no tenant) → full fleet view across all sellers.
         const data = await sessionApi.list();
-        setSessions(data);
+        setSessions(data.filter(s => !deletedIdsRef.current.has(s.id)));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('sessions.create.errorDefault'));
@@ -229,6 +239,9 @@ export function Sessions() {
   const handleDelete = async (id: string) => {
     const session = sessions.find(s => s.id === id);
     const sellerId = sessionStorage.getItem('leadecombot_seller_id') || '';
+    // Tombstone FIRST — so any list refetch that lands mid-delete already
+    // excludes it (no flicker-back while the gateway/brain deletes settle).
+    deletedIdsRef.current.add(id);
     try {
       // 1) Best-effort gateway delete. A 404 means it's already gone (orphan).
       //    For a SELLER, even a real gateway error (500, or the gateway being
@@ -252,7 +265,7 @@ export function Sessions() {
       if (sellerId) {
         await sessionApi.unregisterOwned(sellerId, id);
       }
-      setSessions(sessions.filter(s => s.id !== id));
+      setSessions(prev => prev.filter(s => s.id !== id));
       toast.success(
         t('sessions.delete.successTitle'),
         session ? t('sessions.delete.successDescNamed', { name: session.name }) : t('sessions.delete.successDescGeneric'),
