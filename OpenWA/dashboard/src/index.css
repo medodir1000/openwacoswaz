@@ -62,7 +62,12 @@ h3 {
   margin: 0;
 }
 
-button {
+/* Bare-button boilerplate (Vite scaffold) — scoped to CLASS-LESS buttons only.
+   It is UNLAYERED, so left as plain `button{}` it silently beat every Tailwind
+   utility (which live in @layer utilities): bg-brand-600 lost to this
+   background-color and primary CTAs rendered white-on-light-grey (invisible).
+   Any button with a class (.btn-*, Tailwind) styles itself. */
+button:not([class]) {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -73,11 +78,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
+button:not([class]):hover {
+  border-color: var(--primary);
 }
-button:focus,
-button:focus-visible {
+button:not([class]):focus,
+button:not([class]):focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
@@ -89,7 +94,7 @@ button:focus-visible {
   a:hover {
     color: #747bff;
   }
-  button {
+  button:not([class]) {
     background-color: #f9f9f9;
   }
 }
