@@ -552,18 +552,18 @@
   color: #2563eb;
 }
 .topbar-plan-badge.plan-pro {
-  background: rgba(168, 85, 247, 0.15);
-  color: #00c896;
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--primary);
 }
 .topbar-plan-badge.plan-business {
-  background: rgba(34, 197, 94, 0.18);
-  color: #16a34a;
+  background: rgba(21, 128, 61, 0.14);
+  color: var(--success);
 }
-/* Free-trial badge — purple, matching the landing "FREE TRIAL" card. */
+/* Free-trial badge — brand teal (MASTER §2). */
 .topbar-plan-badge.is-trial {
-  background: rgba(0, 200, 150, 0.15);
-  color: #00c896;
-  border-color: rgba(0, 200, 150, 0.30);
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--primary);
+  border-color: rgba(15, 118, 110, 0.30);
 }
 
 .topbar-billing,

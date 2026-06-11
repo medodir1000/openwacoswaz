@@ -33,11 +33,11 @@
    Declared BEFORE the warning rules so is-near-cap / is-at-cap (orange /
    red) still win when stacked on an expiring or ended trial. */
 .billing-current.is-trial {
-  background: linear-gradient(135deg, rgba(0, 200, 150, 0.10), rgba(168, 85, 247, 0.05));
-  border-color: rgba(0, 200, 150, 0.30);
+  background: rgba(15, 118, 110, 0.06);
+  border-color: rgba(15, 118, 110, 0.30);
 }
 .billing-current.is-trial .billing-fair-use-fill {
-  background: linear-gradient(90deg, #00c896, #00e0a8);
+  background: var(--primary);
 }
 .billing-current.is-near-cap {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(245, 158, 11, 0.04));

@@ -1,51 +1,59 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
+/* App-shell tokens — aligned to design-system/MASTER.md (§2 colors, §5
+   elevation). Every legacy page CSS consumes these vars, so this block IS the
+   app-wide skin. The public Landing/Login keep their own brighter marketing
+   green on purpose — only the logged-in product surface uses MASTER. */
 :root {
-  --primary: #00C896;       /* Closwiz green */
-  --primary-hover: #00A37A; /* Closwiz green-dark */
-  --bg-light: #f8fafc;
-  --bg-white: #ffffff;
-  --bg-card: #ffffff;
-  --text-primary: #0f172a; /* Slate 900 */
-  --text-secondary: #475569; /* Slate 600 */
-  --text-muted: #94a3b8; /* Slate 400 */
-  --border: #e2e8f0; /* Slate 200 */
-  --error: #ef4444;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --primary: #0F766E;       /* brand-600 — WhatsApp premium teal */
+  --primary-hover: #0B5C56; /* brand-700 */
+  --bg-light: #F6F8F9;      /* ink-50 page bg */
+  --bg-white: #FFFFFF;      /* surface */
+  --bg-card: #FFFFFF;
+  --text-primary: #0C1418;  /* ink-900 */
+  --text-secondary: #3A4750;/* ink-600 */
+  --text-muted: #5B6770;    /* ink-500 — still AA on white */
+  --border: #E3E9EC;        /* ink-200 */
+  --error: #B42318;         /* danger-600 */
+  --success: #15803D;       /* success-600 */
+  --warning: #B54708;       /* warning-600 */
+  --shadow-sm: 0 1px 2px rgba(12, 20, 24, 0.06), 0 1px 3px rgba(12, 20, 24, 0.04);
+  --shadow-md: 0 2px 4px rgba(12, 20, 24, 0.06), 0 4px 12px rgba(12, 20, 24, 0.05);
+  --shadow-lg: 0 6px 16px rgba(12, 20, 24, 0.08), 0 2px 6px rgba(12, 20, 24, 0.05);
   --radius: 10px;
 }
 
 /* Dark Mode */
 [data-theme='dark'] {
-  --bg-light: #0f172a; /* Slate 900 */
-  --bg-white: #1e293b; /* Slate 800 */
-  --bg-card: #1e293b;
-  --text-primary: #f1f5f9; /* Slate 100 */
-  --text-secondary: #cbd5e1; /* Slate 300 */
-  --text-muted: #64748b; /* Slate 500 */
-  --border: #334155; /* Slate 700 */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --primary: #16A88E;       /* dark brand-600 (white-text AA) */
+  --primary-hover: #2DD4AA;
+  --bg-light: #0B1115;
+  --bg-white: #121A20;
+  --bg-card: #121A20;
+  --text-primary: #E6EDEF;
+  --text-secondary: #C4CFD4;
+  --text-muted: #93A1AA;
+  --border: #283541;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.32), 0 6px 16px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 /* System preference dark mode */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg-light: #0f172a;
-    --bg-white: #1e293b;
-    --bg-card: #1e293b;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
-    --border: #334155;
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+    --primary: #16A88E;
+    --primary-hover: #2DD4AA;
+    --bg-light: #0B1115;
+    --bg-white: #121A20;
+    --bg-card: #121A20;
+    --text-primary: #E6EDEF;
+    --text-secondary: #C4CFD4;
+    --text-muted: #93A1AA;
+    --border: #283541;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.32), 0 6px 16px rgba(0, 0, 0, 0.28);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3);
   }
 }
 

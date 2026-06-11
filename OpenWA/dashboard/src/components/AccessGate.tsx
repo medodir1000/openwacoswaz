@@ -63,7 +63,7 @@ export function AccessGate({ access }: { access: AccessState }) {
           onClick={() => navigate('/billing')}
           style={{
             flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: 'linear-gradient(135deg,#00C896,#00A37A)', color: '#fff',
+            background: 'var(--primary)', color: '#fff',
             border: 'none', borderRadius: 10, padding: '0.55rem 0.9rem',
             fontSize: '0.83rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
           }}

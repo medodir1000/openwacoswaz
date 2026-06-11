@@ -206,13 +206,13 @@
 
 /* Trial accent — matches Billing + top-bar purple. */
 .plan-status.is-trial {
-  background: linear-gradient(135deg, rgba(0, 200, 150, 0.08), rgba(168, 85, 247, 0.03));
-  border-color: rgba(0, 200, 150, 0.25);
+  background: rgba(15, 118, 110, 0.06);
+  border-color: rgba(15, 118, 110, 0.25);
 }
-.plan-status.is-trial .plan-status-icon { background: rgba(0, 200, 150, 0.14); color: #00c896; }
-.plan-status.is-trial .plan-status-tag { background: rgba(0, 200, 150, 0.16); color: #00c896; }
-.plan-status.is-trial .plan-status-fill { background: linear-gradient(90deg, #00c896, #00e0a8); }
-.plan-status.is-trial .plan-status-cta { background: #00c896; }
+.plan-status.is-trial .plan-status-icon { background: rgba(15, 118, 110, 0.12); color: var(--primary); }
+.plan-status.is-trial .plan-status-tag { background: rgba(15, 118, 110, 0.14); color: var(--primary); }
+.plan-status.is-trial .plan-status-fill { background: var(--primary); }
+.plan-status.is-trial .plan-status-cta { background: var(--primary); }
 
 /* Near-end (amber) — trial about to lapse. */
 .plan-status.is-warn { border-color: rgba(245, 158, 11, 0.4); }
@@ -578,8 +578,8 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: rgba(0, 200, 150, 0.1);
-  color: #00c896;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--primary);
 }
 
 .activity-text {
