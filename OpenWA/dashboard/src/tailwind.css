@@ -48,6 +48,21 @@
   --font-display:'Plus Jakarta Sans',system-ui,sans-serif;
   --font-sans:'Inter',system-ui,sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,monospace;
+
+  --color-surface:#FFFFFF; --color-sunken:#F0F3F5; --color-page:#F6F8F9;
+}
+
+/* Dark mode — override the @theme-generated CSS vars so every Tailwind utility
+   (bg-surface, text-ink-900, border-ink-200, bg-brand-600…) adapts in place. */
+[data-theme='dark']{
+  --color-ink-50:#0E161B; --color-ink-100:#18222A; --color-ink-200:#2A3942;
+  --color-ink-300:#43525C; --color-ink-400:#6B7882; --color-ink-500:#93A1AA;
+  --color-ink-600:#A9B6BD; --color-ink-700:#C4CFD4; --color-ink-800:#D6DFE2;
+  --color-ink-900:#E6EDEF;
+  --color-surface:#121A20; --color-sunken:#0E161B; --color-page:#0B1115;
+  --color-brand-600:#16A88E; --color-brand-700:#2DD4AA;
+  --shadow-soft:0 2px 6px rgba(0,0,0,.32),0 6px 16px rgba(0,0,0,.28);
+  --shadow-soft-lg:0 10px 24px rgba(0,0,0,.4),0 4px 10px rgba(0,0,0,.3);
 }
 
 /* ----------------------------------------------------------------------------

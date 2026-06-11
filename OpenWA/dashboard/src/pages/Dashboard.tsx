@@ -128,7 +128,7 @@ type KpiCardProps = {
 // ── KPI tile — Soft UI (bento) ──────────────────────────────────────────
 function KpiCard({ label, value, icon: Icon, accent, trendInfo, spark, progress, sub }: KpiCardProps) {
   return (
-    <div className="group h-full rounded-card border border-ink-200 bg-white p-5 shadow-soft transition duration-200 hover:-translate-y-px hover:shadow-soft-lg">
+    <div className="group h-full rounded-card border border-ink-200 bg-surface p-5 shadow-soft transition duration-200 hover:-translate-y-px hover:shadow-soft-lg">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">{label}</span>
@@ -276,7 +276,7 @@ function QuickAction({ icon: Icon, label, onClick, primary }: {
     'inline-flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-sm font-semibold transition duration-200 hover:-translate-y-px cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40';
   const skin = primary
     ? 'bg-brand-600 text-white shadow-soft hover:bg-brand-700'
-    : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100';
+    : 'border border-ink-200 bg-surface text-ink-700 hover:bg-ink-100';
   return (
     <button type="button" onClick={onClick} className={`${base} ${skin}`}>
       <Icon size={16} /> {label}
@@ -479,7 +479,7 @@ export function Dashboard() {
 
       {/* Plan / trial tile */}
       <section
-        className={`mb-4 rounded-card border bg-white p-5 shadow-soft ${
+        className={`mb-4 rounded-card border bg-surface p-5 shadow-soft ${
           planTrialEnded ? 'border-danger/40' : planTrialWarn ? 'border-warning/40' : 'border-ink-200'
         }`}
       >
@@ -590,7 +590,7 @@ export function Dashboard() {
         </div>
 
         {/* Conversations chart */}
-        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-8">
+        <section className="col-span-12 rounded-card border border-ink-200 bg-surface p-5 shadow-soft xl:col-span-8">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.charts.conversationsTitle')}</h2>
@@ -609,7 +609,7 @@ export function Dashboard() {
         </section>
 
         {/* Channels donut */}
-        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-4">
+        <section className="col-span-12 rounded-card border border-ink-200 bg-surface p-5 shadow-soft xl:col-span-4">
           <div className="mb-3">
             <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.charts.channelsTitle')}</h2>
             <span className="text-sm text-ink-500">{t('dashboard.charts.channelsSub')}</span>
@@ -622,7 +622,7 @@ export function Dashboard() {
         </section>
 
         {/* Recent WhatsApp chats */}
-        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-8">
+        <section className="col-span-12 rounded-card border border-ink-200 bg-surface p-5 shadow-soft xl:col-span-8">
           <div className="mb-3 flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-brand-50 text-brand-600"><MessagesSquare size={16} /></span>
             <div>
@@ -647,7 +647,7 @@ export function Dashboard() {
         </section>
 
         {/* Bot performance */}
-        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft xl:col-span-4">
+        <section className="col-span-12 rounded-card border border-ink-200 bg-surface p-5 shadow-soft xl:col-span-4">
           <div className="mb-3">
             <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.botPerf.title')}</h2>
             <span className="text-sm text-ink-500">{t('dashboard.botPerf.window')}</span>
@@ -673,7 +673,7 @@ export function Dashboard() {
         </section>
 
         {/* Sessions table */}
-        <section className="col-span-12 rounded-card border border-ink-200 bg-white p-5 shadow-soft">
+        <section className="col-span-12 rounded-card border border-ink-200 bg-surface p-5 shadow-soft">
           <div className="mb-3">
             <h2 className="font-display text-base font-semibold text-ink-900">{t('dashboard.sessionsOverview')}</h2>
             <span className="text-sm text-ink-500">
