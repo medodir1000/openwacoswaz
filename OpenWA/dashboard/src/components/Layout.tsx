@@ -28,6 +28,7 @@ import {
   Building2,
   Zap,
   CreditCard,
+  Workflow,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { type UserRole } from '../hooks/useRole';
@@ -67,6 +68,7 @@ const allNavItems = [
   //   fixed `kind` (see App.tsx). —
   { to: '/funnel',          icon: ShoppingBag,     key: 'ecommerce' as const,      audience: 'seller' as const, fallbackLabel: '📦 E-commerce COD' },
   { to: '/services',        icon: CalendarClock,   key: 'services' as const,       audience: 'seller' as const, fallbackLabel: '📅 Services & Réservations' },
+  { to: '/automation',      icon: Workflow,        key: 'automation' as const,     audience: 'seller' as const, fallbackLabel: 'Automation' },
   { to: '/conversations',   icon: MessagesSquare,  key: 'conversations' as const,  audience: 'seller' as const, fallbackLabel: 'Conversations' },
   { to: '/integrations',    icon: Plug,            key: 'integrations' as const,   audience: 'seller' as const, fallbackLabel: 'Integrations' },
   { to: '/billing',         icon: CreditCard,      key: 'billing' as const,        audience: 'seller' as const, fallbackLabel: 'Billing' },

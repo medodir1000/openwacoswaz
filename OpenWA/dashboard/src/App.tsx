@@ -28,6 +28,7 @@ const Conversations   = lazy(() => import('./pages/Conversations'));
 const Integrations    = lazy(() => import('./pages/Integrations').then(m => ({ default: m.Integrations })));
 const Billing         = lazy(() => import('./pages/Billing').then(m => ({ default: m.Billing })));
 const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions').then(m => ({ default: m.AdminSubscriptions })));
+const FlowBuilder     = lazy(() => import('./pages/FlowBuilder'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -180,6 +181,7 @@ function AppContent() {
             {!isAdmin && <Route path="services"      element={<BotFunnel kind="service" />} />}
             {/* Hidden preview of the new Tailwind "Nouveau Service" form — not in the sidebar. */}
             {!isAdmin && <Route path="services/preview" element={<CreateServiceForm onCancel={() => window.history.back()} onCreate={(d) => console.log('[CreateServiceForm] payload', d)} />} />}
+            {!isAdmin && <Route path="automation"    element={<FlowBuilder />} />}
             {!isAdmin && <Route path="conversations" element={<Conversations />} />}
             {!isAdmin && <Route path="integrations"  element={<Integrations />} />}
             {!isAdmin && <Route path="billing"       element={<Billing />} />}
