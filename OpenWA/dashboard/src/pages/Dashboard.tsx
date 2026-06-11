@@ -477,7 +477,21 @@ export function Dashboard() {
         <QuickAction icon={Smartphone} label={t('dashboard.quick.connect', 'Connect number')} onClick={() => navigate('/sessions')} />
       </div>
 
-      {/* Plan / trial tile */}
+      {/* Plan / trial tile — hold a skeleton until billing/usage loads so the
+          real plan (e.g. Pack 1) never flashes "Gratuit" first. */}
+      {org.loading ? (
+        <section className="mb-4 rounded-card border border-ink-200 bg-surface p-5 shadow-soft">
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="h-11 w-11 shrink-0 animate-pulse rounded-[10px] bg-ink-100" />
+            <div className="min-w-0 flex-1">
+              <span className="block h-2.5 w-20 animate-pulse rounded-pill bg-ink-100" />
+              <span className="mt-2 block h-4 w-28 animate-pulse rounded-pill bg-ink-100" />
+            </div>
+            <span className="h-9 w-28 animate-pulse rounded-[10px] bg-ink-100" />
+          </div>
+          <div className="mt-4 h-1.5 w-full animate-pulse rounded-pill bg-ink-100" />
+        </section>
+      ) : (
       <section
         className={`mb-4 rounded-card border bg-surface p-5 shadow-soft ${
           planTrialEnded ? 'border-danger/40' : planTrialWarn ? 'border-warning/40' : 'border-ink-200'
@@ -543,6 +557,7 @@ export function Dashboard() {
           </span>
         </div>
       </section>
+      )}
 
       {/* Bento grid */}
       <div className="grid grid-cols-12 gap-4">

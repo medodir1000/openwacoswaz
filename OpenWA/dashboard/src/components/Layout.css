@@ -530,6 +530,19 @@
   max-width: 200px;
 }
 
+/* Loading placeholders — held until /funnel/billing/usage resolves so the
+   real plan never flashes a wrong "Free" first. */
+.topbar-skel {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--border);
+  animation: topbar-skel-pulse 1.2s ease-in-out infinite;
+}
+.topbar-skel-name { width: 86px; height: 13px; }
+.topbar-skel-badge { width: 52px; height: 18px; }
+@keyframes topbar-skel-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.9; } }
+@media (prefers-reduced-motion: reduce) { .topbar-skel { animation: none; } }
+
 .topbar-plan-badge {
   display: inline-flex;
   align-items: center;

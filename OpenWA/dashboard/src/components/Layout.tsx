@@ -321,12 +321,23 @@ export function Layout({ onLogout, userRole }: LayoutProps) {
             <div className="topbar-left">
               <button className="topbar-org" type="button" disabled>
                 <Building2 size={16} />
-                <span className="topbar-org-name">
-                  {org.organization_name || t('topbar.myOrganization', 'My Organization')}
-                </span>
-                <span className={`topbar-plan-badge ${org.is_trial ? 'is-trial' : `plan-${org.plan}`}`}>
-                  {org.is_trial ? t('billing.tier.trial', 'Free trial') : PLAN_LABELS[org.plan]}
-                </span>
+                {org.loading ? (
+                  /* Hold a skeleton until the real plan loads — never flash the
+                     default "Free" while /funnel/billing/usage is in flight. */
+                  <>
+                    <span className="topbar-skel topbar-skel-name" aria-hidden="true" />
+                    <span className="topbar-skel topbar-skel-badge" aria-hidden="true" />
+                  </>
+                ) : (
+                  <>
+                    <span className="topbar-org-name">
+                      {org.organization_name || t('topbar.myOrganization', 'My Organization')}
+                    </span>
+                    <span className={`topbar-plan-badge ${org.is_trial ? 'is-trial' : `plan-${org.plan}`}`}>
+                      {org.is_trial ? t('billing.tier.trial', 'Free trial') : PLAN_LABELS[org.plan]}
+                    </span>
+                  </>
+                )}
               </button>
               <button
                 className="topbar-billing"
