@@ -4903,9 +4903,15 @@ def _transcribe_voice(audio_b64: str, mimetype: str = "audio/ogg") -> Optional[s
         key = get_openrouter_key()
         if not (key and audio_b64):
             return None
-        model = get_system_setting(
+        # google/gemini-2.5-flash handles WhatsApp ogg/opus natively (validated
+        # end-to-end against a real opus-in-ogg clip: HTTP 200 + exact French
+        # transcript). The previous default google/gemini-2.0-flash-001 does
+        # NOT exist on OpenRouter (404 "No endpoints found"), so EVERY voice
+        # note silently failed → bot always hit the "couldn't read it" fallback.
+        # `or` guards the empty-string system_setting (it's currently "").
+        model = (get_system_setting(
             "openrouter_audio_model",
-            os.environ.get("OPENROUTER_AUDIO_MODEL", "google/gemini-2.0-flash-001"))
+            os.environ.get("OPENROUTER_AUDIO_MODEL", "")) or "google/gemini-2.5-flash")
         mt = (mimetype or "").lower()
         fmt = ("mp3" if ("mpeg" in mt or "mp3" in mt)
                else "m4a" if ("mp4" in mt or "m4a" in mt or "aac" in mt)
