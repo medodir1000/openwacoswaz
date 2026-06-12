@@ -464,6 +464,11 @@ def load_conversation_history(conversation_id: str,
     if since_iso:
         params["created_at"] = f"gt.{since_iso}"
     rows = _supa_get("messages", params)
+    # Drop our own outbound image markers ([[image:URL]]) — they're a UI-only
+    # mirror for the inbox, not real conversational turns. Feeding them to the
+    # LLM wastes tokens and risks it parroting the raw marker back.
+    rows = [r for r in rows
+            if not str(r.get("content") or "").startswith("[[image:")]
     # Supabase returns newest-first; reverse to chronological for the LLM.
     return list(reversed(rows))
 
@@ -4278,6 +4283,22 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
                 pending["phone"] = _pd
                 log.info("[phone] captured delivery phone from reply: %s", _pd)
 
+    # Surface the customer's real number in the Conversations inbox. The inbox
+    # reads customer_conversations.customer_phone; we never wrote it, so the
+    # seller only ever saw the opaque JID (and nothing for LID-privacy
+    # customers) even after we'd resolved or been told the real number.
+    # Persist it ONCE — the moment we hold a dialable phone (resolved from the
+    # JID / gateway contact lookup, or typed by the customer) — so it shows
+    # next to the chat without a write on every turn.
+    _inbox_phone = pending.get("phone") or ""
+    if _inbox_phone and conversation.get("customer_phone") != _inbox_phone:
+        try:
+            _supa_patch("customer_conversations", {"id": conversation["id"]},
+                        {"customer_phone": _inbox_phone})
+            conversation["customer_phone"] = _inbox_phone
+        except Exception as exc:
+            log.warning("[phone] could not persist customer_phone: %s", exc)
+
     # Early-lead capture: the moment a first message resolves to a
     # product AND we know the customer's phone, drop a partial row in
     # the seller's Sheet so they have a fallback contact if the customer
@@ -4326,13 +4347,23 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
             sess_id = session_id or sess_id
             urls_to_send = _imgs[:4]
             if urls_to_send:
-                def _send_gallery():
+                def _send_gallery(cid=conversation["id"]):
                     import time
                     for u in urls_to_send:
                         try:
                             openwa_send_image(from_jid, u, caption="",
                                               session_id=sess_id,
                                               api_url=sess_url, api_key=sess_key)
+                            # Mirror the sent photo into the inbox thread so the
+                            # seller SEES what the bot showed the customer (it
+                            # used to send silently — "bot sent photos but the
+                            # chat shows nothing"). [[image:URL]] markers are
+                            # rendered as <img> by the dashboard and stripped
+                            # from the LLM history so they don't pollute context.
+                            try:
+                                save_message(cid, "assistant", f"[[image:{u}]]")
+                            except Exception:
+                                pass
                             # Stagger so WhatsApp doesn't queue them all in
                             # one batch and the customer sees them arrive
                             # like a real shop sending photos one by one.
@@ -4377,12 +4408,18 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
             # session, not the stale env/seller fallback id.
             p_sid = session_id or p_sid
 
-            def _send_photos(urls=photo_urls, su=p_url, sk=p_key, si=p_sid):
+            def _send_photos(urls=photo_urls, su=p_url, sk=p_key, si=p_sid,
+                             cid=conversation["id"]):
                 import time
                 for u in urls:
                     try:
                         openwa_send_image(from_jid, u, caption="",
                                           session_id=si, api_url=su, api_key=sk)
+                        # Mirror into the inbox thread (see gallery note above).
+                        try:
+                            save_message(cid, "assistant", f"[[image:{u}]]")
+                        except Exception:
+                            pass
                         time.sleep(1.2)
                     except Exception as exc:
                         log.warning("[photos] send exception: %s", exc)
@@ -4857,9 +4894,57 @@ def _split_for_human(text: str) -> List[str]:
     return [c for c in chunks if c]
 
 
+def _transcribe_voice(audio_b64: str, mimetype: str = "audio/ogg") -> Optional[str]:
+    """Transcribe a WhatsApp voice note (base64 the gateway already downloaded)
+    via OpenRouter's audio-capable chat models — no separate Whisper key needed.
+    Returns the transcript text (original language) or None on any failure, so
+    the caller can fall back gracefully instead of going silent."""
+    try:
+        key = get_openrouter_key()
+        if not (key and audio_b64):
+            return None
+        model = get_system_setting(
+            "openrouter_audio_model",
+            os.environ.get("OPENROUTER_AUDIO_MODEL", "google/gemini-2.0-flash-001"))
+        mt = (mimetype or "").lower()
+        fmt = ("mp3" if ("mpeg" in mt or "mp3" in mt)
+               else "m4a" if ("mp4" in mt or "m4a" in mt or "aac" in mt)
+               else "wav" if "wav" in mt
+               else "ogg")
+        payload = {
+            "model": model,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": (
+                        "Transcribe this WhatsApp voice message verbatim. Output ONLY "
+                        "the transcription in its original language (French, Moroccan "
+                        "Darija, or Arabic). No preamble, no translation.")},
+                    {"type": "input_audio",
+                     "input_audio": {"data": audio_b64, "format": fmt}},
+                ],
+            }],
+            "max_tokens": 600,
+        }
+        r = httpx.post(
+            OPENROUTER_BASE_URL.rstrip("/") + "/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json=payload, timeout=45, verify=_SUPA_VERIFY,
+        )
+        if r.status_code != 200:
+            log.warning("[voice] transcription HTTP %s: %s", r.status_code, (r.text or "")[:200])
+            return None
+        txt = (((r.json().get("choices") or [{}])[0]).get("message") or {}).get("content") or ""
+        txt = txt.strip()
+        return txt or None
+    except Exception as exc:
+        log.warning("[voice] transcription failed: %s", exc)
+        return None
+
+
 def _process_openwa_async(seller_id: str, from_jid: str, text: str,
                           sender_pn: str, session_id: str,
-                          bot_pn: str = "") -> None:
+                          bot_pn: str = "", media: Optional[Dict] = None) -> None:
     """Background worker: actually does the LLM call + send.
 
     Pulled out of the request handler so the HTTP response goes back to
@@ -4884,6 +4969,27 @@ def _process_openwa_async(seller_id: str, from_jid: str, text: str,
                             "(bot_pn=%s) — dropping inbound from %s",
                             session_id, bot_pn or "?", from_jid)
                 return
+
+        # Voice / media: the gateway already downloaded the bytes into
+        # data.media, but a voice note carries no text body so the pipeline
+        # used to drop it (bot went silent). Transcribe the audio (OpenRouter)
+        # and feed the transcript through as the user message — it's saved like
+        # any text, so it ALSO shows in the Conversations inbox. Never silent:
+        # a failed transcription / non-audio file passes a short descriptor so
+        # the bot acknowledges and asks the customer to type.
+        if not text and media:
+            _mt = str((media or {}).get("mimetype") or "").lower()
+            _b64 = (media or {}).get("data") or ""
+            if _b64 and ("audio" in _mt or "ogg" in _mt or "opus" in _mt):
+                _tr = _transcribe_voice(_b64, _mt)
+                text = ("🎤 " + _tr) if _tr else (
+                    "(le client a envoyé une note vocale que je n'ai pas pu lire — "
+                    "demande-lui gentiment de l'écrire)")
+                log.info("[voice] %s for %s", "transcribed" if _tr else "transcription-failed", from_jid)
+            elif _b64 and "image" in _mt:
+                text = "(le client vient d'envoyer une image 📷)"
+            else:
+                text = "(le client a envoyé un fichier)"
 
         reply = process_inbound_message(seller_id, from_jid, text, sender_pn,
                                         session_id=session_id)
@@ -4949,7 +5055,13 @@ def openwa_webhook():
 
     from_jid = (data.get("from") or "").strip()
     text = (data.get("body") or "").strip()
-    if not (from_jid and text):
+    # A voice note / image carries NO text body — the gateway already
+    # downloaded the bytes into data.media (base64). We must not drop those:
+    # accept the message when EITHER text OR media is present. The async
+    # worker transcribes audio → text (so the bot replies AND the note shows
+    # in the inbox) and tags images/files with a short descriptor.
+    media = data.get("media") if isinstance(data.get("media"), dict) else None
+    if not from_jid or not (text or media):
         return _cors(jsonify({"ok": True, "ignored": "missing-from-or-body"})), 200
 
     # WhatsApp Status / Broadcast / Newsletter pings arrive as inbound
@@ -5009,7 +5121,7 @@ def openwa_webhook():
     # waiting and the customer-visible reply latency drops by 1-2s.
     threading.Thread(
         target=_process_openwa_async,
-        args=("", from_jid, text, sender_pn, session_id),
+        args=("", from_jid, text, sender_pn, session_id, bot_pn, media),
         daemon=True,
     ).start()
 
@@ -8373,7 +8485,11 @@ def _conversation_decorate(row: Dict, last: Optional[Dict] = None) -> Dict:
     row["agent_paused"] = bool(pof.get("agent_paused"))
     row["readiness"] = _conversation_readiness(pof, row.get("status"))
     if last is not None:
-        row["last_message"] = (last or {}).get("content") or ""
+        _lc = (last or {}).get("content") or ""
+        # Image markers are UI-only; show a friendly preview, not the raw token.
+        if _lc.startswith("[[image:"):
+            _lc = "📷 Photo"
+        row["last_message"] = _lc
         row["last_message_role"] = (last or {}).get("role") or ""
     return row
 

@@ -467,10 +467,20 @@ export default function Conversations() {
                     <div className="conv-day-sep"><span>{block.day}</span></div>
                     {block.items.map((m) => {
                       const mine = m.role !== 'user';
+                      // The bot mirrors every photo it sends into the thread as
+                      // an [[image:URL]] marker so the seller sees it. Render
+                      // those as an actual (clickable) image instead of text.
+                      const img = /^\[\[image:(.+)\]\]$/.exec((m.content || '').trim());
                       return (
                         <div key={m.id} className={`conv-bubble-row ${mine ? 'mine' : 'theirs'}`}>
-                          <div className="conv-bubble">
-                            <p>{m.content}</p>
+                          <div className={`conv-bubble ${img ? 'is-image' : ''}`}>
+                            {img ? (
+                              <a className="conv-bubble-img" href={img[1]} target="_blank" rel="noreferrer">
+                                <img src={img[1]} alt="" loading="lazy" />
+                              </a>
+                            ) : (
+                              <p>{m.content}</p>
+                            )}
                             <span className="conv-bubble-meta">
                               {clock(m.created_at)}
                               {mine && <CheckCheck size={13} className="conv-receipt" />}
