@@ -1123,6 +1123,16 @@ def determine_next_stage(pending: Dict, history_len: int,
                 "Ask for the full street address in 1 short phrase. Examples: "
                 "\"Et l'adresse exacte ?\", \"Vous habitez où précisément ?\". "
                 "Nothing else.")
+    # Number-privacy (LID) customers: WhatsApp hides their number, so the
+    # delivery phone must be ASKED. pending.phone is auto-seeded from the JID
+    # for normal customers, so this stage never fires for them.
+    if not str(pending.get("phone") or "").strip():
+        return ("STAGE 4c — ask delivery phone number",
+                "Their WhatsApp hides their phone number, and the deliverer "
+                "MUST be able to call them. Ask for it in 1 short, natural "
+                "phrase. Examples: \"Et votre numéro de téléphone pour le "
+                "livreur ?\", \"شنو رقم الهاتف ديالك للتوصيل؟\". "
+                "Nothing else this turn.")
     return ("STAGE 5 — confirm casually",
             "Summarize the order in 1 SHORT message and ask for "
             "confirmation. Format like: \"Donc {qty} {product} pour "
@@ -1505,6 +1515,16 @@ def build_system_prompt(seller: Dict, product: Dict, pc: Optional[Dict],
                          ("city", "City"),
                          ("address", "Address"),
                          ("quantity", "Quantity"))
+    # Number-privacy (LID) customers arrive with NO callable phone — WhatsApp
+    # hides it and every resolver fails. In that case the delivery number is a
+    # REQUIRED field (an order the seller can't call is worthless), so surface
+    # it in the missing list right after the name. Normal customers have
+    # phone_from_jid, so this never appears for them.
+    if not (phone_from_jid or (pending or {}).get("phone")):
+        rk = list(required_keys)
+        rk.insert(1, ("phone", "Phone number (for delivery — REQUIRED, "
+                               "their WhatsApp hides it)"))
+        required_keys = tuple(rk)
     still_missing = [label for key, label in required_keys
                      if not (pending or {}).get(key)]
     missing_block = (
@@ -2735,7 +2755,11 @@ def order_ready_to_push(pending: Dict, kind: str = "product",
         if not required:
             return bool(pending.get("name"))
         return all(pending.get(k) for k in required)
-    base = ("name", "address", "city")
+    # phone is auto-seeded from the JID for normal @c.us customers, so this
+    # only ever blocks LID (number-privacy) customers — exactly the case where
+    # the seller would otherwise get an uncallable order. The prompt asks for
+    # it during collecte when it's missing.
+    base = ("name", "address", "city", "phone")
     if kind == "service":
         return all(pending.get(k) for k in (*base, "service_date"))
     return all(pending.get(k) for k in base)
@@ -4230,7 +4254,9 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
     if not real_phone:
         sess_url, sess_key, sess_id = _resolve_openwa_config(seller)
         resolved = openwa_resolve_phone_for_jid(
-            from_jid, session_id=sess_id, api_url=sess_url, api_key=sess_key,
+            # Prefer the session the message ARRIVED on — the env/seller
+            # fallback id can point at a long-dead session (every lookup 404s).
+            from_jid, session_id=(session_id or sess_id), api_url=sess_url, api_key=sess_key,
         )
         if resolved:
             real_phone = resolved
@@ -4295,6 +4321,9 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
                 _imgs.append(_g.strip())
         if _imgs:
             sess_url, sess_key, sess_id = _resolve_openwa_config(seller)
+            # Send on the session the message ARRIVED on — the env/seller
+            # fallback can be a dead UUID and every image 404s silently.
+            sess_id = session_id or sess_id
             urls_to_send = _imgs[:4]
             if urls_to_send:
                 def _send_gallery():
@@ -4344,6 +4373,9 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
                 cooled = True
         if photo_urls and cooled:
             p_url, p_key, p_sid = _resolve_openwa_config(seller)
+            # Same dead-UUID trap as the gallery: send on the live inbound
+            # session, not the stale env/seller fallback id.
+            p_sid = session_id or p_sid
 
             def _send_photos(urls=photo_urls, su=p_url, sk=p_key, si=p_sid):
                 import time
