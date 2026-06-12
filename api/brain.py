@@ -4322,60 +4322,12 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
         except Exception as exc:
             log.warning("[lead] push failed: %s", exc)
 
-    # Gallery send — opportunistically push the product's supplementary
-    # images (gallery_urls) to the customer once per conversation, right
-    # after the first turn so they SEE the product before any text. The
-    # gallery is capped at 4 images so we don't spam, and runs in a
-    # background thread so it doesn't slow the LLM reply.
-    if fresh_start and not pending.get("gallery_sent_at"):
-        # Lead with the MAIN product photo (image_url), then any gallery images.
-        # Previously this only used gallery_urls — empty when that column isn't
-        # migrated — so a product with just a main photo sent NOTHING. Now the
-        # customer always sees the product on the first turn.
-        _main_img = (product or {}).get("image_url")
-        gallery = (product or {}).get("gallery_urls") or []
-        _imgs = []
-        if isinstance(_main_img, str) and _main_img.strip().startswith(("http://", "https://")):
-            _imgs.append(_main_img.strip())
-        for _g in (gallery if isinstance(gallery, list) else []):
-            if isinstance(_g, str) and _g.strip().startswith(("http://", "https://")) and _g.strip() not in _imgs:
-                _imgs.append(_g.strip())
-        if _imgs:
-            sess_url, sess_key, sess_id = _resolve_openwa_config(seller)
-            # Send on the session the message ARRIVED on — the env/seller
-            # fallback can be a dead UUID and every image 404s silently.
-            sess_id = session_id or sess_id
-            urls_to_send = _imgs[:4]
-            if urls_to_send:
-                def _send_gallery(cid=conversation["id"]):
-                    import time
-                    for u in urls_to_send:
-                        try:
-                            openwa_send_image(from_jid, u, caption="",
-                                              session_id=sess_id,
-                                              api_url=sess_url, api_key=sess_key)
-                            # Mirror the sent photo into the inbox thread so the
-                            # seller SEES what the bot showed the customer (it
-                            # used to send silently — "bot sent photos but the
-                            # chat shows nothing"). [[image:URL]] markers are
-                            # rendered as <img> by the dashboard and stripped
-                            # from the LLM history so they don't pollute context.
-                            try:
-                                save_message(cid, "assistant", f"[[image:{u}]]")
-                            except Exception:
-                                pass
-                            # Stagger so WhatsApp doesn't queue them all in
-                            # one batch and the customer sees them arrive
-                            # like a real shop sending photos one by one.
-                            time.sleep(1.5)
-                        except Exception as exc:
-                            log.warning("[gallery] send exception: %s", exc)
-                threading.Thread(target=_send_gallery, daemon=True).start()
-                pending["gallery_sent_at"] = datetime.now(timezone.utc).isoformat()
-                _supa_patch("customer_conversations", {"id": conversation["id"]},
-                            {"pending_order_fields": pending})
-                log.info("[gallery] sending %d image(s) to %s for product %s",
-                         len(urls_to_send), from_jid, product.get("name"))
+    # NOTE: the product photo is NO LONGER auto-sent on the first turn.
+    # Sellers asked us not to dump the image on a bare "Salut" — it cheapens
+    # the pitch and gives the price away before any rapport. Photos now go out
+    # only (a) when the customer ASKS (block just below) or (b) ONCE at the
+    # confirmation step (after all order fields are collected — see the
+    # "confirm-photo" block right after the field merge near the order push).
 
     # Photos on demand — when the customer ASKS to see the product ("tsawr",
     # "صور", "des photos", "montre-moi", "wreeni"…), send its saved image(s):
@@ -4773,6 +4725,39 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
         except Exception as exc:
             log.warning("[agents] city normalize on Agent2 extract failed: %s", exc)
     pending = merge_pending_order_fields(conversation["id"], pending, extracted)
+
+    # Confirmation photo — show the product ONE time, now that every order
+    # field is collected and the bot is about to ask "Je valide ?". Sellers
+    # asked us to reserve the photo for this moment (or an explicit request)
+    # instead of dumping it on the first "Salut". order_ready_to_push() is the
+    # exact "all required fields present" signal; confirm_photo_sent_at keeps
+    # it to a single send per order. Runs in a background thread + mirrors into
+    # the inbox as an [[image:URL]] marker like the on-demand path.
+    if (order_ready_to_push(pending, kind=product_kind, custom_fields=custom_fields)
+            and not pending.get("confirm_photo_sent_at")):
+        _cmain = (product or {}).get("image_url")
+        if isinstance(_cmain, str) and _cmain.strip().startswith(("http://", "https://")):
+            _cu, _ck, _csid = _resolve_openwa_config(seller)
+            _csid = session_id or _csid
+
+            def _send_confirm_photo(u=_cmain.strip(), su=_cu, sk=_ck,
+                                    si=_csid, cid=conversation["id"]):
+                try:
+                    openwa_send_image(from_jid, u, caption="",
+                                      session_id=si, api_url=su, api_key=sk)
+                    try:
+                        save_message(cid, "assistant", f"[[image:{u}]]")
+                    except Exception:
+                        pass
+                except Exception as exc:
+                    log.warning("[confirm-photo] send exception: %s", exc)
+
+            threading.Thread(target=_send_confirm_photo, daemon=True).start()
+            pending["confirm_photo_sent_at"] = datetime.now(timezone.utc).isoformat()
+            _supa_patch("customer_conversations", {"id": conversation["id"]},
+                        {"pending_order_fields": pending})
+            log.info("[confirm-photo] sent main image to %s at confirmation (product %s)",
+                     from_jid, (product or {}).get("name"))
 
     # 10. If the customer just confirmed and we have everything, fire the
     # order push (insert into `orders` + POST to the Sheets webhook).
