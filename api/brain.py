@@ -3509,37 +3509,20 @@ def openwa_send_image(to_jid: str, image_url: str,
     candidates = [f"{digits}@lid", f"{digits}@c.us"] if is_lid_hint \
                  else [f"{digits}@c.us", f"{digits}@lid"]
 
-    # Fetch the bytes in the BRAIN and send BASE64 to the gateway. The gateway's
-    # MessageMedia.fromUrl path is flaky — it silently drops the image while the
-    # send-image call still returns 2xx (the "said 'Voici la photo' but nothing
-    # arrived" bug). Base64 takes the gateway's pure-base64 branch, which never
-    # re-fetches. follow_redirects: Supabase storage URLs commonly 30x-redirect.
-    img_b64 = None
-    img_mime = "image/jpeg"
-    try:
-        _ir = httpx.get(image_url, timeout=30, follow_redirects=True)
-        _ir.raise_for_status()
-        img_b64 = base64.b64encode(_ir.content).decode("ascii")
-        _ct = (_ir.headers.get("content-type") or "").split(";")[0].strip()
-        if _ct:
-            img_mime = _ct
-    except Exception as exc:
-        log.warning("[openwa] image prefetch failed for %s: %s — falling back to url",
-                    image_url, exc)
-
+    # Send the image URL and let the GATEWAY fetch the bytes. We deliberately
+    # do NOT base64-encode in the brain: a real product photo (~400 KB) inflates
+    # to ~530 KB of base64, which blows past the gateway's default 100 KB JSON
+    # body limit → HTTP 413 "request entity too large" → the image silently
+    # never reaches the customer (the "bot says it sent a photo but nothing
+    # arrives" bug — verified live: url→201 with a real messageId, base64→413).
+    # The gateway's adapter fetches the URL directly (reliable) and only falls
+    # back to MessageMedia.fromUrl on failure, so the URL path is safe.
     for chat_id in candidates:
         try:
-            _body = {"chatId": chat_id, "caption": caption or ""}
-            if img_b64:
-                _body["base64"] = img_b64
-                _body["mimetype"] = img_mime
-                _body["filename"] = "image.jpg"
-            else:
-                _body["url"] = image_url
             r = httpx.post(
                 f"{base}/api/sessions/{sid}/messages/send-image",
                 headers=_openwa_headers(key),
-                json=_body,
+                json={"chatId": chat_id, "url": image_url, "caption": caption or ""},
                 timeout=45,
             )
             if r.status_code in (200, 201, 202):
@@ -3551,7 +3534,8 @@ def openwa_send_image(to_jid: str, image_url: str,
                     continue
                 log.info("[openwa] ✓ sent image to %s", chat_id)
                 return True
-            log.warning("[openwa] image send to %s → HTTP %s", chat_id, r.status_code)
+            log.warning("[openwa] image send to %s → HTTP %s: %s",
+                        chat_id, r.status_code, (r.text or "")[:160])
         except Exception as exc:
             log.warning("[openwa] image send exception for %s: %s", chat_id, exc)
     return False
@@ -4365,13 +4349,14 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
                 import time
                 for u in urls:
                     try:
-                        openwa_send_image(from_jid, u, caption="",
-                                          session_id=si, api_url=su, api_key=sk)
-                        # Mirror into the inbox thread (see gallery note above).
-                        try:
-                            save_message(cid, "assistant", f"[[image:{u}]]")
-                        except Exception:
-                            pass
+                        if openwa_send_image(from_jid, u, caption="",
+                                             session_id=si, api_url=su, api_key=sk):
+                            # Mirror into the inbox ONLY on a real send, so the
+                            # dashboard never shows a photo the customer didn't get.
+                            try:
+                                save_message(cid, "assistant", f"[[image:{u}]]")
+                            except Exception:
+                                pass
                         time.sleep(1.2)
                     except Exception as exc:
                         log.warning("[photos] send exception: %s", exc)
@@ -4743,12 +4728,12 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
             def _send_confirm_photo(u=_cmain.strip(), su=_cu, sk=_ck,
                                     si=_csid, cid=conversation["id"]):
                 try:
-                    openwa_send_image(from_jid, u, caption="",
-                                      session_id=si, api_url=su, api_key=sk)
-                    try:
-                        save_message(cid, "assistant", f"[[image:{u}]]")
-                    except Exception:
-                        pass
+                    if openwa_send_image(from_jid, u, caption="",
+                                         session_id=si, api_url=su, api_key=sk):
+                        try:
+                            save_message(cid, "assistant", f"[[image:{u}]]")
+                        except Exception:
+                            pass
                 except Exception as exc:
                     log.warning("[confirm-photo] send exception: %s", exc)
 
