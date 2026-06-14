@@ -3996,6 +3996,9 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
     # 4. Resolve product + language (first message detects; subsequent use
     # the conversation's pinned values).
     product = None
+    # When this number sells several products and the customer hasn't named
+    # one, we collect them here and ASK which (instead of pitching the lead).
+    disambig_candidates: List[Dict] = []
     stored_language = conversation.get("language_code") or ""
     pc = None
     is_first_turn = not conversation.get("detected_product_id")
@@ -4067,57 +4070,94 @@ def process_inbound_message(seller_id: str, from_jid: str, text: str,
                 log.info("[product] resolved via session-default (%s) -> %s",
                          session_id, product.get("name"))
             elif len(assigned) > 1:
-                # Several products share this number — try a keyword match
-                # restricted to that subset; if still nothing, fall back to
-                # the oldest pinned product (deterministic).
-                product = detect_product_in_message(text, assigned) or assigned[0]
-                log.info("[product] resolved via session-default subset (%s, %d candidates) -> %s",
-                         session_id, len(assigned), product.get("name"))
-        # Single-SKU shortcut: when the seller has exactly one active
-        # product and the customer's first message didn't name anything,
-        # there's no ambiguity — use that product directly instead of
-        # asking "which product?". This preserves the friendly "salam"
-        # → straight into the sales flow UX for single-product shops.
-        if not product and products and len(products) == 1:
-            product = products[0]
+                # Several products share this number — keyword-match within
+                # that subset only; if nothing matches we do NOT default.
+                product = detect_product_in_message(text, assigned)
+                if product:
+                    log.info("[product] resolved via session-default subset (%s) -> %s",
+                             session_id, product.get("name"))
+
+        # The products this customer could plausibly mean on THIS number: the
+        # ones pinned to the session (migration 0006), else the whole catalog.
+        sellable = (filter_products_assigned_to_session(products, session_id)
+                    if session_id else []) or products
+
+        # Single-SKU shortcut: exactly one sellable product → no ambiguity,
+        # use it directly (keeps the friendly "salam → straight to the sale"
+        # UX for single-product shops).
+        if not product and len(sellable) == 1:
+            product = sellable[0]
             log.info("[product] single-SKU shortcut -> %s", product.get("name"))
 
-        # Lead-product fallback for CONTINUING conversations: when the
-        # customer has talked to the bot before (the convo row already
-        # has prior messages) but the current message has no keyword
-        # AND no session-default applies, default to the FIRST active
-        # product (typically the seller's hero product). Without this
-        # the bot enters soft-greet mode every turn and the customer
-        # sees "Salut, comment puis-je vous aider ?" repeated forever
-        # — exactly the loop a real shop owner would resolve by just
-        # pitching their main product.
-        # IMPORTANT: only fires on continuing convos. The very first
-        # turn still goes through the soft-greet so we don't pitch a
-        # random product to someone who said "wrong number, sorry".
-        if not product and products and len(products) > 1:
-            try:
-                prior_msgs = _supa_get("messages", {
-                    "conversation_id": f"eq.{conversation['id']}",
-                    "select": "id",
-                    "limit": "1",
-                })
-                if prior_msgs:
-                    product = products[0]
-                    log.info("[product] lead-product fallback (continuing "
-                             "convo, %d prior msgs known) -> %s",
-                             len(prior_msgs), product.get("name"))
-            except Exception as _exc:
-                log.debug("[product] lead-fallback check failed: %s", _exc)
-        # If we still have no product and the catalog has SOME products,
-        # we DON'T silently default. Instead we ask the customer to name
-        # which product they want — handled right below as an early-return
-        # short-circuit so the rest of the pipeline (country snap, pricing,
-        # prompt build, order push) doesn't have to be product-aware.
+        # Multiple products, none named: DON'T silently pitch the lead product
+        # (that answered every generic "bonjour" with the first SKU even when
+        # the customer meant the other one). Ask which — UNLESS we already
+        # asked once this conversation (disambig_asked), in which case default
+        # to the lead so the customer never gets stuck in a "which product?"
+        # loop. The disambiguation reply itself is emitted below.
+        if not product and len(sellable) > 1:
+            if (conversation.get("pending_order_fields") or {}).get("disambig_asked"):
+                product = sellable[0]
+                log.info("[product] disambig already asked → lead fallback -> %s",
+                         product.get("name"))
+            else:
+                disambig_candidates = sellable
+                log.info("[product] %d sellable products, none named → will ask which",
+                         len(sellable))
 
     # Empty catalog → bot has nothing to sell. Stay silent.
     if not product and not products:
         log.info("[process] empty catalog for seller %s — skipping", seller_id)
         return ""
+
+    # Multiple products on this number and the customer hasn't named one →
+    # ASK which, listing them by name (set disambig_asked so we only ask once;
+    # the lead-product fallback above takes over afterwards). This is what a
+    # real shop owner does when their number sells several things — instead of
+    # blindly pitching the first SKU to everyone who says a generic "bonjour".
+    if not product and disambig_candidates:
+        sniffed = detect_message_language(text)
+        lang = (stored_language or sniffed
+                or seller.get("default_language") or "fr").lower()
+        names = [str(p.get("name") or "").strip()
+                 for p in disambig_candidates if (p.get("name") or "").strip()][:6]
+        if len(names) >= 2:
+            sep = (" أو " if lang.startswith(("ar", "ary"))
+                   else " ou " if lang.startswith("fr")
+                   else " o " if lang.startswith("es")
+                   else " או " if lang.startswith("he")
+                   else " or ")
+            joined = ", ".join(names[:-1]) + sep + names[-1]
+        else:
+            joined = names[0] if names else ""
+        if lang.startswith("ary"):
+            ask_reply = f"سلام 😊 عندنا {joined}. أشمن وحدة بغيتي؟"
+        elif lang.startswith("ar"):
+            ask_reply = f"السلام عليكم 😊 لدينا {joined}. أي منتج يهمك؟"
+        elif lang.startswith("fr"):
+            ask_reply = f"Bonjour 😊 On a {joined}. Lequel vous intéresse ?"
+        elif lang.startswith("es"):
+            ask_reply = f"¡Hola 😊! Tenemos {joined}. ¿Cuál te interesa?"
+        elif lang.startswith("he"):
+            ask_reply = f"היי 😊 יש לנו {joined}. מה מעניין אותך?"
+        else:
+            ask_reply = f"Hi 😊 We have {joined}. Which one are you interested in?"
+        log.info("[product] disambiguation ask for %s → %s", from_jid, names)
+        try:
+            save_message(conversation["id"], "user", text)
+            save_message(conversation["id"], "assistant", ask_reply)
+            _pof_dis = dict(conversation.get("pending_order_fields") or {})
+            _pof_dis["disambig_asked"] = True
+            patches = {
+                "pending_order_fields": _pof_dis,
+                "last_message_at": datetime.now(timezone.utc).isoformat(),
+            }
+            if sniffed and (conversation.get("language_code") or "") != sniffed:
+                patches["language_code"] = sniffed
+            _supa_patch("customer_conversations", {"id": conversation["id"]}, patches)
+        except Exception as exc:
+            log.warning("[product] disambig persist failed: %s", exc)
+        return ask_reply
 
     # No product resolved + catalog non-empty → reply with a SHORT, warm
     # greeting in the customer's language. We deliberately do NOT list
