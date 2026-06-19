@@ -3667,15 +3667,22 @@ def openwa_register_webhook(callback_url: str, session_id: str = "") -> bool:
     if not (sid and OPENWA_API_KEY and callback_url):
         return False
     try:
+        # Dedup MUST be scoped to THIS session. The gateway's global
+        # GET /api/webhooks (WebhooksListController.findAll) IGNORES the
+        # sessionId param and returns EVERY session's webhooks — so a URL match
+        # there found a DIFFERENT seller's identical brain webhook and made us
+        # skip registering THIS session's. Result: only the first tenant ever
+        # got a webhook; every seller after that had 0 → their bot stayed mute
+        # (no inbound was ever forwarded). Use the per-session endpoint, which
+        # returns only this session's webhooks.
         existing = httpx.get(
-            f"{OPENWA_API_URL}/api/webhooks",
+            f"{OPENWA_API_URL}/api/sessions/{sid}/webhooks",
             headers=_openwa_headers(),
-            params={"sessionId": sid},
             timeout=15,
         ).json() or []
         for w in (existing if isinstance(existing, list) else []):
             if (w.get("url") or "").rstrip("/") == callback_url.rstrip("/"):
-                log.info("[openwa] webhook already registered (id=%s)", w.get("id"))
+                log.info("[openwa] webhook already registered for %s (id=%s)", sid, w.get("id"))
                 return True
         r = httpx.post(
             f"{OPENWA_API_URL}/api/sessions/{sid}/webhooks",
