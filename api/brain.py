@@ -3701,6 +3701,47 @@ def openwa_register_webhook(callback_url: str, session_id: str = "") -> bool:
         return False
 
 
+def _reconcile_all_session_webhooks() -> int:
+    """Ensure EVERY live gateway session has our /openwa/webhook registered.
+
+    Self-heals the two ways a seller's session goes silent: (a) pair-time
+    registration that failed (transient gateway hiccup), and (b) a webhook the
+    gateway DROPPED on redeploy / volume reset (the session reconnects but its
+    webhook is gone). Idempotent — openwa_register_webhook no-ops when the
+    per-session webhook already exists — so a new seller NEVER has to register
+    anything by hand. Returns the count of sessions ensured."""
+    if not OPENWA_API_KEY:
+        return 0
+    cb = f"{_webhook_base()}/openwa/webhook"
+    try:
+        r = httpx.get(f"{OPENWA_API_URL}/api/sessions",
+                      headers=_openwa_headers(), timeout=20)
+        sessions = r.json() if r.status_code == 200 else []
+    except Exception as exc:
+        log.warning("[openwa] reconcile: list sessions failed: %s", exc)
+        return 0
+    ok = 0
+    for s in (sessions if isinstance(sessions, list) else []):
+        sid = (s.get("id") or "").strip()
+        if sid and openwa_register_webhook(cb, sid):
+            ok += 1
+    if isinstance(sessions, list) and sessions:
+        log.info("[openwa] webhook reconcile: %d/%d session(s) ensured", ok, len(sessions))
+    return ok
+
+
+def _webhook_reconcile_loop(interval_s: int) -> None:
+    """Background heartbeat that keeps every session's webhook alive, so new
+    sellers are wired up automatically and a gateway redeploy never leaves a
+    bot mute for more than one interval."""
+    while True:
+        try:
+            _reconcile_all_session_webhooks()
+        except Exception as exc:
+            log.warning("[openwa] reconcile loop error: %s", exc)
+        time.sleep(max(60, interval_s))
+
+
 def openwa_resolve_seller_id(session_id: str,
                              bot_pn: Optional[str] = None) -> Optional[str]:
     """Map an OpenWA session_id to a leadecombot seller_id.
@@ -8853,35 +8894,29 @@ if __name__ == "__main__":
     # hostname (it requires a TLD or an IP), so we always feed it 127.0.0.1
     # for local installs. The host.docker.internal alias is used only when
     # this brain is itself running inside a Docker container.
-    if OPENWA_API_KEY and OPENWA_SESSION_ID:
-        # Where the gateway POSTs inbound messages. In the cloud the gateway is
-        # a SEPARATE service, so it can't reach 127.0.0.1 — pick the brain's own
-        # reachable base URL, in priority order:
-        #   1. PUBLIC_BASE_URL   — explicit (Railway public/private URL, tunnel…)
-        #   2. RAILWAY_PRIVATE_DOMAIN — auto, when deployed on Railway
-        #   3. host.docker.internal — brain itself inside Docker locally
-        #   4. 127.0.0.1         — plain local dev (unchanged behaviour)
-        _rail = os.environ.get("RAILWAY_PRIVATE_DOMAIN")
-        if PUBLIC_BASE_URL:
-            _wh_base = PUBLIC_BASE_URL
-        elif _rail:
-            _wh_base = f"http://{_rail}:{PORT}"
-        elif os.environ.get("OPENWA_INSIDE_DOCKER"):
-            _wh_base = f"http://host.docker.internal:{PORT}"
-        else:
-            _wh_base = f"http://127.0.0.1:{PORT}"
-        callback = f"{_wh_base}/openwa/webhook"
-        # Defer to a thread so a slow OpenWA startup doesn't block Flask.
-        def _register():
+    if OPENWA_API_KEY:
+        # Auto-register our inbound webhook for EVERY live gateway session, on a
+        # heartbeat — so a new seller never has to touch it, and a gateway
+        # redeploy (which drops webhooks) never leaves a bot mute for more than
+        # one interval. This replaces the old single-OPENWA_SESSION_ID register:
+        # that env id is usually a long-dead UUID, while real traffic lives on
+        # per-seller sessions the reconciler discovers from GET /api/sessions.
+        # Webhook base URL (gateway is a SEPARATE cloud service, can't reach
+        # 127.0.0.1) is resolved by _webhook_base(): PUBLIC_BASE_URL →
+        # RAILWAY_PRIVATE_DOMAIN → host.docker.internal → 127.0.0.1.
+        _reconcile_every = int(os.environ.get("OPENWA_WEBHOOK_RECONCILE_SECONDS", "180"))
+
+        def _reconcile_thread():
             try:
-                time.sleep(1)
-                openwa_register_webhook(callback)
-            except Exception as exc:
-                log.warning("[openwa] startup register exception: %s", exc)
-        threading.Thread(target=_register, daemon=True).start()
-        log.info("OpenWA: API=%s session=%s; webhook → %s",
-                 OPENWA_API_URL, OPENWA_SESSION_ID, callback)
+                time.sleep(1)  # let a co-deployed gateway finish booting
+            except Exception:
+                pass
+            _webhook_reconcile_loop(_reconcile_every)
+
+        threading.Thread(target=_reconcile_thread, daemon=True).start()
+        log.info("OpenWA: API=%s; auto-reconciling session webhooks every %ss → %s/openwa/webhook",
+                 OPENWA_API_URL, _reconcile_every, _webhook_base())
     else:
-        log.info("OpenWA: not configured (set OPENWA_API_KEY + OPENWA_SESSION_ID in .env)")
+        log.info("OpenWA: not configured (set OPENWA_API_KEY in .env)")
 
     app.run(host=HOST, port=PORT, debug=False)
